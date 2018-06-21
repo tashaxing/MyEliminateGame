@@ -3,12 +3,13 @@
 
 USING_NS_CC;
 
+// 实例化主场景和层
 Scene* MainGameScene::createScene()
 {
 	return MainGameScene::create();
 }
 
-// on "init" you need to initialize your instance
+// 初始化主场景
 bool MainGameScene::init()
 {
 	//////////////////////////////
@@ -69,7 +70,7 @@ bool MainGameScene::init()
 	return true;
 }
 
-
+// 退出游戏的回调
 void MainGameScene::menuCloseCallback(Ref* pSender)
 {
 	//Close the cocos2d-x game scene and quit the application
