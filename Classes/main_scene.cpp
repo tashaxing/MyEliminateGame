@@ -39,7 +39,7 @@ bool MainGameScene::init()
 
 	// create menu, it's an autorelease object
 	auto menu = Menu::create(closeItem, NULL);
-	menu->setPosition(Vec2::ZERO);
+	menu->setPosition(Vec2(x, y));
 	this->addChild(menu, 1);
 
 	/////////////////////////////
