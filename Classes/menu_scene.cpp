@@ -20,9 +20,15 @@ bool MenuScene::init()
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
 
 	// 加载菜单页面背景
-	auto menu_background = Sprite::create("diamond.png");
+	auto menu_background = Sprite::create("images/menu_bg.jpg");
 	menu_background->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
 	addChild(menu_background, 0);
+
+	// 添加开始菜单
+	auto start_label = Label::createWithTTF("Start Game", "fonts/Marker Felt.ttf", 35);
+	start_label->setTextColor(cocos2d::Color4B::RED);
+	start_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
+	addChild(start_label, 1);
 
 	return true;
 }

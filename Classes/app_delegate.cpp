@@ -102,13 +102,6 @@ bool AppDelegate::applicationDidFinishLaunching() {
 
     register_all_packages();
 
-	// 添加文件搜索路径
-	std::vector<std::string> res_paths;
-	res_paths.push_back("fonts");
-	res_paths.push_back("images");
-	res_paths.push_back("sounds");
-	FileUtils::getInstance()->setSearchResolutionsOrder(res_paths);
-
     // create a scene. it's an autorelease object
     //auto scene = MainGameScene::createScene();
 	Scene *scene = MenuScene::createScene();
