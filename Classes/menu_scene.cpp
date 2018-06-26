@@ -1,9 +1,8 @@
 #include "SimpleAudioEngine.h"
 #include "menu_scene.h"
+#include "main_scene.h"
 
 USING_NS_CC;
-
-
 
 Scene *MenuScene::createScene()
 {
@@ -27,8 +26,21 @@ bool MenuScene::init()
 	// 添加开始菜单
 	auto start_label = Label::createWithTTF("Start Game", "fonts/Marker Felt.ttf", 35);
 	start_label->setTextColor(cocos2d::Color4B::RED);
-	start_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
-	addChild(start_label, 1);
+	
+	auto start_menu_item = MenuItemLabel::create(start_label, [&](Ref *sender) {
+		CCLOG("start game"); // 注意，只有debug模式才会输出log
+
+		// 转场到游戏主界面
+		auto main_game_scene = MainGameScene::create();
+		TransitionScene *transition = TransitionFade::create(0.5f, main_game_scene, Color3B(255, 255, 255));
+		Director::getInstance()->replaceScene(transition);
+	});
+	start_menu_item->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
+	
+	auto menu = Menu::createWithItem(start_menu_item);
+	menu->setPosition(Vec2::ZERO);
+
+	addChild(menu, 1);
 
 	return true;
 }
