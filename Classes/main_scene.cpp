@@ -6,35 +6,54 @@ USING_NS_CC;
 // 实例化主场景和层
 Scene* MainGameScene::createScene()
 {
+	auto game_scene = 
+	auto game_layer = MainGameScene::create();
 	return MainGameScene::create();
 }
 
 // 初始化主场景
 bool MainGameScene::init()
 {
-	//////////////////////////////
-	// 1. super init first
 	if (!Scene::init())
 		return false;
 
+	// 获得屏幕尺寸常量(必须在类函数里获取)
+	const Size kScreenSize = Director::getInstance()->getVisibleSize();
+	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
+
+	// 加载游戏界面背景
+	auto game_background = Sprite::create("images/game_bg.jpg");
+	game_background->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
+	addChild(game_background, 0);
+
+
+	// 添加触摸事件监听
+	/*auto touch_listener = EventListenerTouchOneByOne::create();
+	touch_listener->onTouchBegan = CC_CALLBACK_2(MainGameScene::onTouchBegan, this);
+	touch_listener->onTouchEnded = CC_CALLBACK_2(MainGameScene::onTouchEnded, this);
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(touch_listener, this);*/
 
 	return true;
 }
 
-// 退出游戏的回调
-void MainGameScene::menuCloseCallback(Ref* pSender)
-{
-	//Close the cocos2d-x game scene and quit the application
-	Director::getInstance()->end();
-
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
-	exit(0);
-#endif
-
-	/*To navigate back to native iOS screen(if present) without quitting the application  ,do not use Director::getInstance()->end() and exit(0) as given above,instead trigger a custom event created in RootViewController.mm as below*/
-
-	//EventCustom customEndEvent("game_scene_close_event");
-	//_eventDispatcher->dispatchEvent(&customEndEvent);
-
-
-}
+//bool MainGameScene::onTouchBegan(Touch *touch, Event *event)
+//{
+//	CCLOG("touch begin: ", touch->getLocation().x, touch->getLocation().y);
+//	return true;
+//
+//}
+//
+//void MainGameScene::onTouchEnded(Touch *touch, Event *event)
+//{
+//	CCLOG("touch end: ", touch->getLocation().x, touch->getLocation().y);
+//}
+//
+//void MainGameScene::onEnter()
+//{
+//	CCLOG("enter main game scene");
+//}
+//
+//void MainGameScene::onExit()
+//{
+//	CCLOG("exit main game scene");
+//}

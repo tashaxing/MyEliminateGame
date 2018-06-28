@@ -27,6 +27,7 @@ bool MenuScene::init()
 	auto start_label = Label::createWithTTF("Start Game", "fonts/Marker Felt.ttf", 35);
 	start_label->setTextColor(cocos2d::Color4B::RED);
 	
+	// 用lambda表达式作为菜单回调
 	auto start_menu_item = MenuItemLabel::create(start_label, [&](Ref *sender) {
 		CCLOG("start game"); // 注意，只有debug模式才会输出log
 
