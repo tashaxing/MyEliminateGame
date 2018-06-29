@@ -1,5 +1,6 @@
 #include "SimpleAudioEngine.h"
 #include "game_scene.h"
+#include "element.h"
 
 USING_NS_CC;
 
@@ -27,6 +28,8 @@ bool GameScene::init()
 	game_background->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
 	addChild(game_background, 0);
 
+	// 添加消除对象矩阵
+	auto element = Element::createElement
 
 	// 添加触摸事件监听
 	auto touch_listener = EventListenerTouchOneByOne::create();
