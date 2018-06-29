@@ -39,24 +39,25 @@ bool GameScene::init()
 
 bool GameScene::onTouchBegan(Touch *touch, Event *event)
 {
-	CCLOG("touch begin");
-	CCLOG("touch begin: ", touch->getLocation().x, touch->getLocation().y);
+	CCLOG("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 	return true;
 
 }
 
 void GameScene::onTouchEnded(Touch *touch, Event *event)
 {
-	CCLOG("touch end");
-	CCLOG("touch end: ", touch->getLocation().x, touch->getLocation().y);
+	CCLOG("touch end, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 }
 
 void GameScene::onEnter()
 {
+	// 必须先layer onenter 才能捕捉触摸事件
+	Layer::onEnter();
 	CCLOG("enter game scene");
 }
 
 void GameScene::onExit()
 {
+	Layer::onExit();
 	CCLOG("exit game scene");
 }
