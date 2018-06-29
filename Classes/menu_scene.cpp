@@ -1,6 +1,6 @@
 #include "SimpleAudioEngine.h"
 #include "menu_scene.h"
-#include "main_scene.h"
+#include "game_scene.h"
 
 USING_NS_CC;
 
@@ -29,10 +29,10 @@ bool MenuScene::init()
 	
 	// 用lambda表达式作为菜单回调
 	auto start_menu_item = MenuItemLabel::create(start_label, [&](Ref *sender) {
-		CCLOG("start game"); // 注意，只有debug模式才会输出log
+		CCLOG("click start game"); // 注意，只有debug模式才会输出log
 
 		// 转场到游戏主界面
-		auto main_game_scene = MainGameScene::create();
+		auto main_game_scene = GameScene::createScene();
 		TransitionScene *transition = TransitionFade::create(0.5f, main_game_scene, Color3B(255, 255, 255));
 		Director::getInstance()->replaceScene(transition);
 	});

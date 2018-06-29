@@ -3,6 +3,7 @@
 
 #include "cocos2d.h"
 
+// 菜单页面只是单纯的scene，不加layer
 class MenuScene : public cocos2d::Scene
 {
 public:
