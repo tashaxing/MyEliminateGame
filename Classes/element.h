@@ -6,8 +6,9 @@
 class Element : public cocos2d::Sprite
 {
 public:
-	static Element *createElement();
 	virtual bool init();
+
+	void vanish(); // 播放消失效果动画
 
 	CREATE_FUNC(Element);
 
