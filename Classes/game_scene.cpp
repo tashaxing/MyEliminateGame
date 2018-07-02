@@ -121,7 +121,7 @@ bool GameScene::onTouchBegan(Touch *touch, Event *event)
 
 void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 {
-	CCLOG("touch moved, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//CCLOG("touch moved, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 
 	static int move_direction = 0; // 0 水平，1 竖直
 
@@ -167,13 +167,15 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 		ElementPos target_pos = getElementPosByCoordinate(target_position.x, target_position.y);
 		auto target_element = _game_board[target_pos.row][target_pos.col];
 
-		if (target_pos.row != _start_pos.row || target_pos.col != target_pos.col)
+		if (target_pos.row != _start_pos.row || target_pos.col != _start_pos.col)
 		{
 			// 如果移动到目标精灵范围内，则发生交换
+			CCLOG("swap element");
 			/*Vec2 target_element_delta;
 			target_element_delta.x = -start_element_delta.x;
 			target_element_delta.y = -start_element_delta.y;*/
-			target_element->setPosition(start_element->getPosition());
+			//target_element->setPosition(start_element->getPosition());
+			
 		}
 	}
 }
