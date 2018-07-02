@@ -1,7 +1,6 @@
 #ifndef __HELLOWORLD_SCENE_H__
 #define __HELLOWORLD_SCENE_H__
 
-#include <unordered_set>
 #include "cocos2d.h"
 
 class Element;
@@ -17,11 +16,12 @@ struct ElementPos
 	//{}
 };
 
+
 // 必须要能够Layer才能接收触摸事件和进入退出事件
 class GameScene : public cocos2d::Layer
 {
 public:
-	static cocos2d::Scene* createScene();
+	static cocos2d::Scene *createScene();
 
 	virtual bool init();
 	virtual void onEnter();
@@ -36,12 +36,13 @@ public:
 	CREATE_FUNC(GameScene);
 
 private:
-	std::unordered_set<std::vector<Element *>> _game_board; // 精灵阵列
+	std::vector<std::vector<Element *>> _game_board; // 精灵阵列
 	ElementPos _start_pos, _end_pos; // 拖拽的起始和终止位置标号
 	bool _is_moving; // 是否在移动中
 	ElementPos getElementPosByCoordinate(float x, float y);
 	
-	std::vector<ElementPos> checkEleminate();
+	std::vector<ElementPos> checkEliminate();
+	void batchEliminate(std::vector<ElementPos> &eliminate_list);
 };
 
 #endif // __HELLOWORLD_SCENE_H__

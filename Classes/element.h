@@ -8,21 +8,12 @@ class Element : public cocos2d::Sprite
 public:
 	virtual bool init();
 	
-	inline void setType(int texture_index)
-	{
-		_element_type = texture_index;
-	}
-	inline int getType()
-	{
-		return _element_type;
-	}
+	int element_type; // 纹理类型
+	bool is_marked; // 是否标记为消除
 
 	void vanish(); // 播放消失效果动画
 
 	CREATE_FUNC(Element);
-
-private:
-	int _element_type; // 精灵的种类，由纹理的索引来区分
 }; 
 
 #endif

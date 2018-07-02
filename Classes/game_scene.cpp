@@ -62,7 +62,9 @@ bool GameScene::init()
 		for (int j = 0; j < kColNum; j++)
 		{
 			auto element = Element::create();
-			element->setTexture(kElementImgArray[getRandomSpriteIndex(kElementImgArray.size())]); // 添加随机纹理	
+			int random_index = getRandomSpriteIndex(kElementImgArray.size()); // 随机生成精灵
+			element->setTexture(kElementImgArray[random_index]); // 添加随机纹理	
+			element->element_type = random_index;
 			element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 			element->setPosition(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size);
 			addChild(element, 1);
@@ -108,15 +110,94 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 	return pos;
 }
 
-std::unordered_set<ElementPos> GameScene::checkEleminate()
+// 全盘扫描
+std::vector<ElementPos> GameScene::checkEliminate()
 {
+	std::vector<ElementPos> res_eliminate_list;
 	// 采用简单的二维扫描来确定可以三消的结果集，不用递归
 	for (int i = 0; i < kRowNum; i++)
 		for (int j = 0; j < kColNum; j++)
 		{
-			// 判断左右、上下是否相同
-			if (i - 1 >= 0 && )
+			// 判断上下是否相同
+			if (i - 1 >= 0
+				&& _game_board[i - 1][j]->element_type == _game_board[i][j]->element_type
+				&& i + 1 < kRowNum
+				&& _game_board[i + 1][j]->element_type == _game_board[i][j]->element_type)
+			{
+				// 添加连着的竖向三个，跳过已添加的
+				if (!_game_board[i][j]->is_marked)
+				{
+					ElementPos pos;
+					pos.row = i;
+					pos.col = j;
+
+					res_eliminate_list.push_back(pos);
+					_game_board[i][j]->is_marked = true;
+				}
+				if (!_game_board[i - 1][j]->is_marked)
+				{
+					ElementPos pos;
+					pos.row = i - 1;
+					pos.col = j;
+
+					res_eliminate_list.push_back(pos);
+					_game_board[i - 1][j]->is_marked = true;
+				}
+				if (!_game_board[i + 1][j]->is_marked)
+				{
+					ElementPos pos;
+					pos.row = i + 1;
+					pos.col = j;
+
+					res_eliminate_list.push_back(pos);
+					_game_board[i + 1][j]->is_marked = true;
+				}
+			}
+
+			// 判断左右是否相同
+			if (j - 1 >= 0
+				&& _game_board[i][j - 1]->element_type == _game_board[i][j]->element_type
+				&& j + 1 < kColNum
+				&& _game_board[i][j + 1]->element_type == _game_board[i][j]->element_type)
+			{
+				// 添加连着的横向三个，跳过已添加的
+				if (!_game_board[i][j]->is_marked)
+				{
+					ElementPos pos;
+					pos.row = i;
+					pos.col = j;
+
+					res_eliminate_list.push_back(pos);
+					_game_board[i][j]->is_marked = true;
+				}
+				if (!_game_board[i][j - 1]->is_marked)
+				{
+					ElementPos pos;
+					pos.row = i;
+					pos.col = j - 1;
+
+					res_eliminate_list.push_back(pos);
+					_game_board[i][j - 1]->is_marked = true;
+				}
+				if (!_game_board[i][j + 1]->is_marked)
+				{
+					ElementPos pos;
+					pos.row = i;
+					pos.col = j + 1;
+
+					res_eliminate_list.push_back(pos);
+					_game_board[i][j + 1]->is_marked = true;
+				}
+			}
 		}
+
+	return res_eliminate_list;
+}
+
+void GameScene::batchEliminate(std::vector<ElementPos> &eliminate_list)
+{
+	for (auto &pos : eliminate_list)
+		_game_board[pos.row][pos.col]->vanish();
 }
 
 bool GameScene::onTouchBegan(Touch *touch, Event *event)
@@ -126,6 +207,11 @@ bool GameScene::onTouchBegan(Touch *touch, Event *event)
 	// 记录开始触摸的精灵坐标
 	_start_pos = getElementPosByCoordinate(touch->getLocation().x, touch->getLocation().y);
 	
+	auto eliminate_set = checkEliminate();
+	for (auto &pos : eliminate_set)
+		CCLOG("set, row: %d, col: %d", pos.row, pos.col);
+	batchEliminate(eliminate_set);
+
 	return true;
 
 }
@@ -187,6 +273,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 			target_element_delta.y = -start_element_delta.y;*/
 			//target_element->setPosition(start_element->getPosition());
 			
+
 		}
 	}
 }
