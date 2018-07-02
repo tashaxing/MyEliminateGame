@@ -1,6 +1,7 @@
 #ifndef __HELLOWORLD_SCENE_H__
 #define __HELLOWORLD_SCENE_H__
 
+#include <unordered_set>
 #include "cocos2d.h"
 
 class Element;
@@ -35,10 +36,12 @@ public:
 	CREATE_FUNC(GameScene);
 
 private:
-	std::vector<std::vector<Element *>> _game_board; // 精灵阵列
+	std::unordered_set<std::vector<Element *>> _game_board; // 精灵阵列
 	ElementPos _start_pos, _end_pos; // 拖拽的起始和终止位置标号
 	bool _is_moving; // 是否在移动中
 	ElementPos getElementPosByCoordinate(float x, float y);
+	
+	std::vector<ElementPos> checkEleminate();
 };
 
 #endif // __HELLOWORLD_SCENE_H__

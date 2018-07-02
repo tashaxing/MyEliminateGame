@@ -12,9 +12,10 @@ bool Element::init()
 
 void Element::vanish()
 {
-	auto texture = getTexture();
-	
+	// 显示特效再消失
 }
+
+
 
 
 

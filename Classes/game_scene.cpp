@@ -108,6 +108,17 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 	return pos;
 }
 
+std::unordered_set<ElementPos> GameScene::checkEleminate()
+{
+	// 采用简单的二维扫描来确定可以三消的结果集，不用递归
+	for (int i = 0; i < kRowNum; i++)
+		for (int j = 0; j < kColNum; j++)
+		{
+			// 判断左右、上下是否相同
+			if (i - 1 >= 0 && )
+		}
+}
+
 bool GameScene::onTouchBegan(Touch *touch, Event *event)
 {
 	CCLOG("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
