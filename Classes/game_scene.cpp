@@ -226,6 +226,8 @@ bool GameScene::onTouchBegan(Touch *touch, Event *event)
 
 	// 记录开始触摸的精灵坐标
 	_start_pos = getElementPosByCoordinate(touch->getLocation().x, touch->getLocation().y);
+	// 每次触碰算一次新的移动过程
+	_is_moving = true;
 	
 	auto eliminate_set = checkEliminate();
 	for (auto &pos : eliminate_set)
@@ -242,9 +244,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 
 	// 根据触摸移动的方向来交换精灵（实际上还可以通过点击两个精灵来实现）
 
-	static int move_direction = 0; // 0 水平，1 竖直
-
-	// 计算相对位移，拖拽精灵
+	// 计算相对位移，拖拽精灵，注意范围
 	if (_start_pos.row > -1 && _start_pos.row < kRowNum
 		&& _start_pos.col > -1 && _start_pos.col < kColNum)
 	{
@@ -257,44 +257,37 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 
 		Vec2 start_element_delta;
 		
-		if (!_is_moving)
+		if (_is_moving)
 		{
+			int delta_factor = 5;
+			// 根据偏移方向交换精灵
 			if (fabs(x_delta) > fabs(y_delta))
-				move_direction = 0;
+			{
+				if (x_delta > delta_factor)
+				{
+					// 水平向右
+				}
+				else if (x_delta < -delta_factor)
+				{
+					// 水平向左
+				}
+			}
 			else
-				move_direction = 1;
+			{
+				if (y_delta > delta_factor)
+				{
+					// 竖直向上
+				}
+				else
+				{
+					// 竖直向下
+				}
+			}
 
-			_is_moving = true;
+			// 回归非移动状态
+			_is_moving = false;
 		}
 
-		// 保持移动方向
-		if (move_direction == 0)
-		{
-			start_element_delta.x = x_delta;
-			start_element_delta.y = 0;
-		}
-		else
-		{
-			start_element_delta.x = 0;
-			start_element_delta.y = y_delta;
-		}
-
-		// 获得目标坐标，和目标精灵
-		Vec2 target_position = start_element->getPosition() + start_element_delta;
-		start_element->setPosition(target_position);
-
-		ElementPos target_pos = getElementPosByCoordinate(target_position.x, target_position.y);
-		Element *target_element = _game_board[target_pos.row][target_pos.col];
-
-		if (target_pos.row != _start_pos.row || target_pos.col != _start_pos.col)
-		{
-			// 如果移动到目标精灵范围内，则发生交换
-			CCLOG("swap element");
-			/*Vec2 target_element_delta;
-			target_element_delta.x = -start_element_delta.x;
-			target_element_delta.y = -start_element_delta.y;*/
-			//target_element->setPosition(start_element->getPosition());
-		}
 	}
 }
 

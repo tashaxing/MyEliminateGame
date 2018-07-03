@@ -41,8 +41,9 @@ private:
 	bool _is_moving; // 是否在移动中
 	ElementPos getElementPosByCoordinate(float x, float y);
 	
-	std::vector<ElementPos> checkEliminate();
-	void batchEliminate(std::vector<ElementPos> &eliminate_list);
+	void swapElementPair(ElementPos p1, ElementPos p2); // 交换两个精灵
+	std::vector<ElementPos> checkEliminate(); // 检查可消除的精灵
+	void batchEliminate(std::vector<ElementPos> &eliminate_list); // 执行消除
 };
 
 #endif // __HELLOWORLD_SCENE_H__
