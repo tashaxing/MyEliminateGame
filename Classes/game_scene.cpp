@@ -5,7 +5,7 @@
 USING_NS_CC;
 
 // 精灵纹理文件
-const auto kElementImgArray = std::vector<std::string>{
+const std::vector<std::string> kElementImgArray{
 	"images/diamond_red.png",
 	"images/diamond_green.png",
 	"images/diamond_blue.png",
@@ -13,6 +13,10 @@ const auto kElementImgArray = std::vector<std::string>{
 	"images/candy_green.png",
 	"images/candy_blue.png"
 };
+
+// 消除时候纹理
+const std::string kEliminateStartImg = "images/star.png";
+
 
 // 界面边距
 const float kLeftMargin = 20;
@@ -32,8 +36,8 @@ int getRandomSpriteIndex(int len)
 // 实例化主场景和层
 Scene *GameScene::createScene()
 {
-	auto game_scene = Scene::create();
-	auto game_layer = GameScene::create();
+	Scene *game_scene = Scene::create();
+	Layer *game_layer = GameScene::create();
 	game_scene->addChild(game_layer);
 	return game_scene;
 }
@@ -49,7 +53,7 @@ bool GameScene::init()
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
 
 	// 加载游戏界面背景
-	auto game_background = Sprite::create("images/game_bg.jpg");
+	Sprite *game_background = Sprite::create("images/game_bg.jpg");
 	game_background->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
 	addChild(game_background, 0);
 
@@ -61,7 +65,7 @@ bool GameScene::init()
 		std::vector<Element *> line_elements;
 		for (int j = 0; j < kColNum; j++)
 		{
-			auto element = Element::create();
+			Element *element = Element::create();
 			int random_index = getRandomSpriteIndex(kElementImgArray.size()); // 随机生成精灵
 			element->setTexture(kElementImgArray[random_index]); // 添加随机纹理	
 			element->element_type = random_index;
@@ -85,7 +89,7 @@ bool GameScene::init()
 	_is_moving = false;
 
 	// 添加触摸事件监听
-	auto touch_listener = EventListenerTouchOneByOne::create();
+	EventListenerTouchOneByOne *touch_listener = EventListenerTouchOneByOne::create();
 	touch_listener->onTouchBegan = CC_CALLBACK_2(GameScene::onTouchBegan, this);
 	touch_listener->onTouchMoved = CC_CALLBACK_2(GameScene::onTouchMoved, this);
 	touch_listener->onTouchEnded = CC_CALLBACK_2(GameScene::onTouchEnded, this);
@@ -108,6 +112,12 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 	pos.col = col;
 
 	return pos;
+}
+
+void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
+{
+	// 交换两个元素，矩阵变换，动画变换
+
 }
 
 // 全盘扫描
@@ -196,8 +206,18 @@ std::vector<ElementPos> GameScene::checkEliminate()
 
 void GameScene::batchEliminate(std::vector<ElementPos> &eliminate_list)
 {
+	// 切换精灵图标并消失
+	const Size kScreenSize = Director::getInstance()->getVisibleSize();
+	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
+	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
+
 	for (auto &pos : eliminate_list)
+	{
+		_game_board[pos.row][pos.col]->setTexture(kEliminateStartImg); // 设置成消除纹理
+		_game_board[pos.row][pos.col]->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 		_game_board[pos.row][pos.col]->vanish();
+	}
+		
 }
 
 bool GameScene::onTouchBegan(Touch *touch, Event *event)
@@ -220,6 +240,8 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 {
 	//CCLOG("touch moved, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 
+	// 根据触摸移动的方向来交换精灵（实际上还可以通过点击两个精灵来实现）
+
 	static int move_direction = 0; // 0 水平，1 竖直
 
 	// 计算相对位移，拖拽精灵
@@ -227,7 +249,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 		&& _start_pos.col > -1 && _start_pos.col < kColNum)
 	{
 		// 只有在game board范围的精灵坐标才进行位移
-		auto start_element = _game_board[_start_pos.row][_start_pos.col];
+		Element *start_element = _game_board[_start_pos.row][_start_pos.col];
 
 		// 只在水平和数值两个维度进行位移, 并且移动之后固定一个方向
 		float x_delta = touch->getDelta().x;
@@ -262,7 +284,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 		start_element->setPosition(target_position);
 
 		ElementPos target_pos = getElementPosByCoordinate(target_position.x, target_position.y);
-		auto target_element = _game_board[target_pos.row][target_pos.col];
+		Element *target_element = _game_board[target_pos.row][target_pos.col];
 
 		if (target_pos.row != _start_pos.row || target_pos.col != _start_pos.col)
 		{
@@ -272,8 +294,6 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 			target_element_delta.x = -start_element_delta.x;
 			target_element_delta.y = -start_element_delta.y;*/
 			//target_element->setPosition(start_element->getPosition());
-			
-
 		}
 	}
 }

@@ -12,6 +12,7 @@ public:
 	bool is_marked; // 是否标记为消除
 
 	void vanish(); // 播放消失效果动画
+	void vanishCallback(); // 消失回调
 
 	CREATE_FUNC(Element);
 }; 

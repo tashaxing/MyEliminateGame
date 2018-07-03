@@ -2,6 +2,8 @@
 
 USING_NS_CC;
 
+
+
 bool Element::init()
 {
 	if (!Sprite::init())
@@ -17,10 +19,16 @@ bool Element::init()
 void Element::vanish()
 {
 	// 显示特效再消失
-	removeFromParent();
+	ScaleTo *scale_to = ScaleTo::create(0.2, 0.5);
+	CallFunc *funcall = CallFunc::create(this, callfunc_selector(Element::vanishCallback));
+	Sequence *sequence = Sequence::create(scale_to, funcall, NULL);
+	runAction(sequence);
 }
 
-
+void Element::vanishCallback()
+{
+	removeFromParent();
+}
 
 
 
