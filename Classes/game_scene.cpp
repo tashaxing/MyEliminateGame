@@ -70,7 +70,7 @@ bool GameScene::init()
 			element->setTexture(kElementImgArray[random_index]); // 添加随机纹理	
 			element->element_type = random_index;
 			element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
-			element->setPosition(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size);
+			element->setPosition(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size); // FIXME:紧密排布，中间没有缝隙, 0.5是为了对齐锚点
 			addChild(element, 1);
 
 			line_elements.push_back(element);
@@ -117,7 +117,10 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 {
 	// 交换两个元素，矩阵变换，动画变换
-
+	auto eliminate_set = checkEliminate();
+	for (auto &pos : eliminate_set)
+		CCLOG("set, row: %d, col: %d", pos.row, pos.col);
+	batchEliminate(eliminate_set);
 }
 
 // 全盘扫描
@@ -222,18 +225,14 @@ void GameScene::batchEliminate(std::vector<ElementPos> &eliminate_list)
 
 bool GameScene::onTouchBegan(Touch *touch, Event *event)
 {
-	CCLOG("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//CCLOG("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 
 	// 记录开始触摸的精灵坐标
 	_start_pos = getElementPosByCoordinate(touch->getLocation().x, touch->getLocation().y);
+	CCLOG("start pos, row: %d, col: %d", _start_pos.row, _start_pos.col);
 	// 每次触碰算一次新的移动过程
 	_is_moving = true;
 	
-	auto eliminate_set = checkEliminate();
-	for (auto &pos : eliminate_set)
-		CCLOG("set, row: %d, col: %d", pos.row, pos.col);
-	batchEliminate(eliminate_set);
-
 	return true;
 
 }
@@ -248,44 +247,42 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 	if (_start_pos.row > -1 && _start_pos.row < kRowNum
 		&& _start_pos.col > -1 && _start_pos.col < kColNum)
 	{
-		// 只有在game board范围的精灵坐标才进行位移
-		Element *start_element = _game_board[_start_pos.row][_start_pos.col];
-
 		// 只在水平和数值两个维度进行位移, 并且移动之后固定一个方向
-		float x_delta = touch->getDelta().x;
-		float y_delta = touch->getDelta().y;
+		//float x_delta = touch->getDelta().x;
+		//float y_delta = touch->getDelta().y;
 
-		Vec2 start_element_delta;
+		// 通过判断移动后触摸点的位置在哪个范围来决定移动的方向
+		Vec2 cur_loacation = touch->getLocation();
+		ElementPos cur_pos = getElementPosByCoordinate(cur_loacation.x, cur_loacation.y);
+		
 		
 		if (_is_moving)
 		{
-			int delta_factor = 5;
 			// 根据偏移方向交换精灵
-			if (fabs(x_delta) > fabs(y_delta))
-			{
-				if (x_delta > delta_factor)
-				{
-					// 水平向右
-				}
-				else if (x_delta < -delta_factor)
-				{
-					// 水平向左
-				}
-			}
-			else
-			{
-				if (y_delta > delta_factor)
-				{
-					// 竖直向上
-				}
-				else
-				{
-					// 竖直向下
-				}
-			}
 
-			// 回归非移动状态
-			_is_moving = false;
+			bool is_need_swap = false;
+			
+			CCLOG("cur pos, row: %d, col: %d", cur_pos.row, cur_pos.col);
+			if (_start_pos.col + 1 == cur_pos.col && _start_pos.row == cur_pos.row) // 水平向右
+				is_need_swap = true;
+			else if (_start_pos.col - 1 == cur_pos.col && _start_pos.row == cur_pos.row) // 水平向左
+				is_need_swap = true;
+			else if (_start_pos.row + 1 == cur_pos.row && _start_pos.col == cur_pos.col) // 竖直向上
+				is_need_swap = true;
+			else if (_start_pos.row - 1 == cur_pos.row && _start_pos.col == cur_pos.col) // 竖直向下
+				is_need_swap = true;
+
+			if (is_need_swap)
+			{
+				// 执行交换
+				swapElementPair(_start_pos, cur_pos);
+
+				// 回归非移动状态
+				_is_moving = false;
+			}
+				
+
+			
 		}
 
 	}
@@ -293,7 +290,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 
 void GameScene::onTouchEnded(Touch *touch, Event *event)
 {
-	CCLOG("touch end, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//CCLOG("touch end, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 	_is_moving = false;
 }
 
