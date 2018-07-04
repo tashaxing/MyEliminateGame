@@ -138,6 +138,8 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 	element1->runAction(move_1to2);
 	element2->runAction(move_2to1);
 
+	// 注意如果反响变换可能导致动画出错
+
 	//// 内存中交换
 	//Vec2 temp_position = Vec2(element1->getPosition().x, element1->getPosition().y);
 	//int temp_type = element1->element_type;
@@ -405,11 +407,11 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 						//if (checkGameDead())
 							//CCLOG("the game is dead");
 					}
-					else
+					/*else
 					{
 						CCLOG("no available eliminate, swap back");
 						swapElementPair(_start_pos, cur_pos);
-					}
+					}*/
 
 					// 回归非移动状态
 					_is_moving = false;
