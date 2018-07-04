@@ -4,7 +4,7 @@
 
 USING_NS_CC;
 
-// 精灵纹理文件
+// 精灵纹理文件，索引值就是类型
 const std::vector<std::string> kElementImgArray{
 	"images/diamond_red.png",
 	"images/diamond_green.png",
@@ -14,7 +14,8 @@ const std::vector<std::string> kElementImgArray{
 	"images/candy_blue.png"
 };
 
-// 消除时候纹理
+// 消除时候类型和纹理
+const int kElementEliminateType = -1;
 const std::string kEliminateStartImg = "images/star.png";
 
 
@@ -87,6 +88,7 @@ bool GameScene::init()
 
 	// 初始移动状态
 	_is_moving = false;
+	_is_can_touch = true;
 
 	// 添加触摸事件监听
 	EventListenerTouchOneByOne *touch_listener = EventListenerTouchOneByOne::create();
@@ -116,6 +118,9 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 
 void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 {
+	// 交换时禁止可触摸状态
+	_is_can_touch = false;
+
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
 	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
@@ -124,28 +129,34 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 	Element *element1 = _game_board[p1.row][p1.col];
 	Element *element2 = _game_board[p2.row][p2.col];
 
-	// 内存中交换
-	Vec2 temp_position = Vec2(element1->getPosition().x, element1->getPosition().y);
-	int temp_type = element1->element_type;
+	Vec2 position1 = element1->getPosition();
+	Vec2 position2 = element2->getPosition();
 
-	element1->setPosition(element2->getPosition());
-	element1->element_type = element2->element_type;
-	element1->setTexture(kElementImgArray[element2->element_type]);
-	element1->setContentSize(Size(element_size, element_size)); 
+	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
+	MoveTo *move_2to1 = MoveTo::create(0.2, position1);
 
-	element2->setPosition(temp_position);
-	element2->element_type = temp_type;
-	element2->setTexture(kElementImgArray[temp_type]);
-	element2->setContentSize(Size(element_size, element_size));
+	element1->runAction(move_1to2);
+	element2->runAction(move_2to1);
 
-	// 交换事件触发消除检查
-	auto eliminate_set = checkEliminate();
-	for (auto &pos : eliminate_set)
-		CCLOG("set, row: %d, col: %d", pos.row, pos.col);
-	batchEliminate(eliminate_set);
+	//// 内存中交换
+	//Vec2 temp_position = Vec2(element1->getPosition().x, element1->getPosition().y);
+	//int temp_type = element1->element_type;
+
+	////element1->setPosition(element2->getPosition());
+	//element1->element_type = element2->element_type;
+	//element1->setTexture(kElementImgArray[element2->element_type]);
+	//element1->setContentSize(Size(element_size, element_size)); 
+
+	////element2->setPosition(temp_position);
+	//element2->element_type = temp_type;
+	//element2->setTexture(kElementImgArray[temp_type]);
+	//element2->setContentSize(Size(element_size, element_size));
+
+	// 恢复触摸状态
+	_is_can_touch = true;
 }
 
-// 全盘扫描
+// 全盘扫描检查可消除精灵，添加到可消除集合
 std::vector<ElementPos> GameScene::checkEliminate()
 {
 	std::vector<ElementPos> res_eliminate_list;
@@ -238,22 +249,105 @@ void GameScene::batchEliminate(std::vector<ElementPos> &eliminate_list)
 
 	for (auto &pos : eliminate_list)
 	{
+		_game_board[pos.row][pos.col]->element_type = kElementEliminateType; // 标记成消除类型
 		_game_board[pos.row][pos.col]->setTexture(kEliminateStartImg); // 设置成消除纹理
 		_game_board[pos.row][pos.col]->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 		_game_board[pos.row][pos.col]->vanish();
 	}
 		
+	// 下降精灵填充空白
+	
+}
+
+void GameScene::fillVacantElements()
+{
+	
+}
+
+bool GameScene::checkGameDead()
+{
+	// 全盘扫描，尝试移动每个元素到四个方向，如果都没有可消除的，则游戏陷入僵局
+	bool is_game_dead = true;
+	for (int i = 0; i < kRowNum; i++)
+	{
+		for (int j = 0; j < kColNum; j++)
+		{
+			// 上
+			if (i < kRowNum - 1)
+			{
+				// 交换后判断，然后再交换回来
+				std::swap(_game_board[i][j], _game_board[i + 1][j]);
+				auto eliminate_set = checkEliminate();
+				if (!eliminate_set.empty())
+				{
+					is_game_dead = false;
+					std::swap(_game_board[i][j], _game_board[i + 1][j]);
+					break;
+				}
+				std::swap(_game_board[i][j], _game_board[i + 1][j]);
+			}
+
+			// 下
+			if (i > 0)
+			{
+				std::swap(_game_board[i][j], _game_board[i - 1][j]);
+				auto eliminate_set = checkEliminate();
+				if (!eliminate_set.empty())
+				{
+					is_game_dead = false;
+					std::swap(_game_board[i][j], _game_board[i - 1][j]);
+					break;
+				}
+				std::swap(_game_board[i][j], _game_board[i - 1][j]);
+			}
+
+			// 左
+			if (j > 0)
+			{
+				std::swap(_game_board[i][j], _game_board[i][j - 1]);
+				auto eliminate_set = checkEliminate();
+				if (!eliminate_set.empty())
+				{
+					is_game_dead = false;
+					std::swap(_game_board[i][j], _game_board[i][j - 1]);
+					break;
+				}
+				std::swap(_game_board[i][j], _game_board[i][j - 1]);
+			}
+
+			// 右 
+			if (j < kColNum - 1)
+			{
+				std::swap(_game_board[i][j], _game_board[i][j + 1]);
+				auto eliminate_set = checkEliminate();
+				if (!eliminate_set.empty())
+				{
+					is_game_dead = false;
+					std::swap(_game_board[i][j], _game_board[i][j + 1]);
+					break;
+				}
+				std::swap(_game_board[i][j], _game_board[i][j + 1]);
+			}
+		}
+	}
+
+	// 如果最后所有精灵都找不到可消除的
+	return !is_game_dead;
 }
 
 bool GameScene::onTouchBegan(Touch *touch, Event *event)
 {
 	//CCLOG("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
-
-	// 记录开始触摸的精灵坐标
-	_start_pos = getElementPosByCoordinate(touch->getLocation().x, touch->getLocation().y);
-	CCLOG("start pos, row: %d, col: %d", _start_pos.row, _start_pos.col);
-	// 每次触碰算一次新的移动过程
-	_is_moving = true;
+	// 只有在可触摸条件下才可以
+	if (_is_can_touch)
+	{
+		// 记录开始触摸的精灵坐标
+		_start_pos = getElementPosByCoordinate(touch->getLocation().x, touch->getLocation().y);
+		CCLOG("start pos, row: %d, col: %d", _start_pos.row, _start_pos.col);
+		// 每次触碰算一次新的移动过程
+		_is_moving = true;
+	}
+	
 	
 	return true;
 
@@ -263,47 +357,66 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 {
 	//CCLOG("touch moved, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 
-	// 根据触摸移动的方向来交换精灵（实际上还可以通过点击两个精灵来实现）
-
-	// 计算相对位移，拖拽精灵，注意范围
-	if (_start_pos.row > -1 && _start_pos.row < kRowNum
-		&& _start_pos.col > -1 && _start_pos.col < kColNum)
+	// 只有在可触摸条件下才可以
+	if (_is_can_touch)
 	{
-		// 只在水平和数值两个维度进行位移, 并且移动之后固定一个方向
-		//float x_delta = touch->getDelta().x;
-		//float y_delta = touch->getDelta().y;
+		// 根据触摸移动的方向来交换精灵（实际上还可以通过点击两个精灵来实现）
 
-		// 通过判断移动后触摸点的位置在哪个范围来决定移动的方向
-		Vec2 cur_loacation = touch->getLocation();
-		ElementPos cur_pos = getElementPosByCoordinate(cur_loacation.x, cur_loacation.y);
-		
-		
-		if (_is_moving)
+		// 计算相对位移，拖拽精灵，注意范围
+		if (_start_pos.row > -1 && _start_pos.row < kRowNum
+			&& _start_pos.col > -1 && _start_pos.col < kColNum)
 		{
-			// 根据偏移方向交换精灵
+			// 只在水平和数值两个维度进行位移, 并且移动之后固定一个方向
+			//float x_delta = touch->getDelta().x;
+			//float y_delta = touch->getDelta().y;
 
-			bool is_need_swap = false;
-			
-			CCLOG("cur pos, row: %d, col: %d", cur_pos.row, cur_pos.col);
-			if (_start_pos.col + 1 == cur_pos.col && _start_pos.row == cur_pos.row) // 水平向右
-				is_need_swap = true;
-			else if (_start_pos.col - 1 == cur_pos.col && _start_pos.row == cur_pos.row) // 水平向左
-				is_need_swap = true;
-			else if (_start_pos.row + 1 == cur_pos.row && _start_pos.col == cur_pos.col) // 竖直向上
-				is_need_swap = true;
-			else if (_start_pos.row - 1 == cur_pos.row && _start_pos.col == cur_pos.col) // 竖直向下
-				is_need_swap = true;
+			// 通过判断移动后触摸点的位置在哪个范围来决定移动的方向
+			Vec2 cur_loacation = touch->getLocation();
+			ElementPos cur_pos = getElementPosByCoordinate(cur_loacation.x, cur_loacation.y);
 
-			if (is_need_swap)
+			if (_is_moving)
 			{
-				// 执行交换
-				swapElementPair(_start_pos, cur_pos);
+				// 根据偏移方向交换精灵
 
-				// 回归非移动状态
-				_is_moving = false;
+				bool is_need_swap = false;
+
+				CCLOG("cur pos, row: %d, col: %d", cur_pos.row, cur_pos.col);
+				if (_start_pos.col + 1 == cur_pos.col && _start_pos.row == cur_pos.row) // 水平向右
+					is_need_swap = true;
+				else if (_start_pos.col - 1 == cur_pos.col && _start_pos.row == cur_pos.row) // 水平向左
+					is_need_swap = true;
+				else if (_start_pos.row + 1 == cur_pos.row && _start_pos.col == cur_pos.col) // 竖直向上
+					is_need_swap = true;
+				else if (_start_pos.row - 1 == cur_pos.row && _start_pos.col == cur_pos.col) // 竖直向下
+					is_need_swap = true;
+
+				if (is_need_swap)
+				{
+					// 执行交换
+					swapElementPair(_start_pos, cur_pos);
+
+					// 交换事件后进行消除检查
+					auto eliminate_set = checkEliminate();
+					if (!eliminate_set.empty())
+					{
+						batchEliminate(eliminate_set);
+
+						// 每次消除完检查是否僵局
+						//if (checkGameDead())
+							//CCLOG("the game is dead");
+					}
+					else
+					{
+						CCLOG("no available eliminate, swap back");
+						swapElementPair(_start_pos, cur_pos);
+					}
+
+					// 回归非移动状态
+					_is_moving = false;
+				}
 			}
-		}
 
+		}
 	}
 }
 

@@ -39,11 +39,14 @@ private:
 	std::vector<std::vector<Element *>> _game_board; // 精灵阵列
 	ElementPos _start_pos, _end_pos; // 拖拽的起始和终止位置标号
 	bool _is_moving; // 是否在移动中
+	bool _is_can_touch; // 是否可触摸
 	ElementPos getElementPosByCoordinate(float x, float y);
 	
 	void swapElementPair(ElementPos p1, ElementPos p2); // 交换两个精灵
 	std::vector<ElementPos> checkEliminate(); // 检查可消除的精灵
 	void batchEliminate(std::vector<ElementPos> &eliminate_list); // 执行消除
+	void fillVacantElements(); // 填补空缺
+	bool checkGameDead(); // 检查游戏是否结束
 };
 
 #endif // __HELLOWORLD_SCENE_H__
