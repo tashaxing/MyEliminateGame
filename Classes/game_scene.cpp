@@ -116,7 +116,29 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 
 void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 {
+	const Size kScreenSize = Director::getInstance()->getVisibleSize();
+	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
+	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
+
 	// 交换两个元素，矩阵变换，动画变换
+	Element *element1 = _game_board[p1.row][p1.col];
+	Element *element2 = _game_board[p2.row][p2.col];
+
+	// 内存中交换
+	Vec2 temp_position = Vec2(element1->getPosition().x, element1->getPosition().y);
+	int temp_type = element1->element_type;
+
+	element1->setPosition(element2->getPosition());
+	element1->element_type = element2->element_type;
+	element1->setTexture(kElementImgArray[element2->element_type]);
+	element1->setContentSize(Size(element_size, element_size)); 
+
+	element2->setPosition(temp_position);
+	element2->element_type = temp_type;
+	element2->setTexture(kElementImgArray[temp_type]);
+	element2->setContentSize(Size(element_size, element_size));
+
+	// 交换事件触发消除检查
 	auto eliminate_set = checkEliminate();
 	for (auto &pos : eliminate_set)
 		CCLOG("set, row: %d, col: %d", pos.row, pos.col);
@@ -127,7 +149,7 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 std::vector<ElementPos> GameScene::checkEliminate()
 {
 	std::vector<ElementPos> res_eliminate_list;
-	// 采用简单的二维扫描来确定可以三消的结果集，不用递归
+	// 采用简单的二维扫描来确定可以三消的结果集，横竖连着大于或等于3个就消除，不用递归
 	for (int i = 0; i < kRowNum; i++)
 		for (int j = 0; j < kColNum; j++)
 		{
@@ -280,9 +302,6 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 				// 回归非移动状态
 				_is_moving = false;
 			}
-				
-
-			
 		}
 
 	}
