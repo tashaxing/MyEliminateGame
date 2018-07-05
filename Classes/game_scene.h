@@ -36,7 +36,7 @@ public:
 	CREATE_FUNC(GameScene);
 
 private:
-	std::vector<std::vector<Element *>> _game_board; // 精灵阵列
+	std::vector<std::vector<int>> _game_board; // 精灵阵列, 存储精灵类型
 	ElementPos _start_pos, _end_pos; // 拖拽的起始和终止位置标号
 	bool _is_moving; // 是否在移动中
 	bool _is_can_touch; // 是否可触摸

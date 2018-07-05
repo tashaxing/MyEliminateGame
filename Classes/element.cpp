@@ -18,10 +18,10 @@ bool Element::init()
 
 void Element::vanish()
 {
-	// 显示特效再消失
+	// 延时显示特效再消失
 	ScaleTo *scale_to = ScaleTo::create(0.2, 0.5);
 	CallFunc *funcall = CallFunc::create(this, callfunc_selector(Element::vanishCallback));
-	Sequence *sequence = Sequence::create(scale_to, funcall, NULL);
+	Sequence *sequence = Sequence::create(DelayTime::create(0.2), scale_to, funcall, NULL);
 	runAction(sequence);
 }
 

@@ -14,8 +14,11 @@ const std::vector<std::string> kElementImgArray{
 	"images/candy_blue.png"
 };
 
+// 标记为待消除类型
+const int kElementMarkedType = -1;
+
 // 消除时候类型和纹理
-const int kElementEliminateType = -1;
+const int kElementEliminateType = 10;
 const std::string kEliminateStartImg = "images/star.png";
 
 
@@ -58,12 +61,12 @@ bool GameScene::init()
 	game_background->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
 	addChild(game_background, 0);
 
-	// 添加消除对象矩阵
+	// 添加消除对象矩阵，游戏逻辑与界面解耦
 	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
 	srand(unsigned(time(0))); // 初始化随机数发生器
 	for (int i = 0; i < kRowNum; i++)
 	{
-		std::vector<Element *> line_elements;
+		std::vector<int> line_elements;
 		for (int j = 0; j < kColNum; j++)
 		{
 			Element *element = Element::create();
@@ -72,9 +75,12 @@ bool GameScene::init()
 			element->element_type = random_index;
 			element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 			element->setPosition(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size); // FIXME:紧密排布，中间没有缝隙, 0.5是为了对齐锚点
+			
+			std::string elment_name = StringUtils::format("%d_%d", i, j);
+			element->setName(elment_name); // 每个界面精灵给一个唯一的名字标号便于后续寻找
 			addChild(element, 1);
 
-			line_elements.push_back(element);
+			line_elements.push_back(element->element_type);
 		}
 		_game_board.push_back(line_elements);
 	}
@@ -126,33 +132,32 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
 
 	// 交换两个元素，矩阵变换，动画变换
-	Element *element1 = _game_board[p1.row][p1.col];
-	Element *element2 = _game_board[p2.row][p2.col];
+	std::string name1 = StringUtils::format("%d_%d", p1.row, p1.col);
+	std::string name2 = StringUtils::format("%d_%d", p2.row, p2.col);
+	Node *element1 = getChildByName(name1);
+	Node *element2 = getChildByName(name2);
 
+	// 原始位置信息
 	Vec2 position1 = element1->getPosition();
 	Vec2 position2 = element2->getPosition();
+
+	CCLOG("position1, x: %f, y: %f", position1.x, position2.y);
+	CCLOG("position2, x: %f, y: %f", position2.x, position2.y);
 
 	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
 	MoveTo *move_2to1 = MoveTo::create(0.2, position1);
 
+	// 交换名称
 	element1->runAction(move_1to2);
 	element2->runAction(move_2to1);
 
-	// 注意如果反响变换可能导致动画出错
+	element1->setName(name2);
+	element2->setName(name1);
 
-	//// 内存中交换
-	//Vec2 temp_position = Vec2(element1->getPosition().x, element1->getPosition().y);
-	//int temp_type = element1->element_type;
+	// 注意如果反向变换可能导致动画出错
 
-	////element1->setPosition(element2->getPosition());
-	//element1->element_type = element2->element_type;
-	//element1->setTexture(kElementImgArray[element2->element_type]);
-	//element1->setContentSize(Size(element_size, element_size)); 
-
-	////element2->setPosition(temp_position);
-	//element2->element_type = temp_type;
-	//element2->setTexture(kElementImgArray[temp_type]);
-	//element2->setContentSize(Size(element_size, element_size));
+	// 内存中交换
+	std::swap(_game_board[p1.row][p1.col], _game_board[p2.row][p2.col]);
 
 	// 恢复触摸状态
 	_is_can_touch = true;
@@ -168,73 +173,73 @@ std::vector<ElementPos> GameScene::checkEliminate()
 		{
 			// 判断上下是否相同
 			if (i - 1 >= 0
-				&& _game_board[i - 1][j]->element_type == _game_board[i][j]->element_type
+				&& _game_board[i - 1][j] == _game_board[i][j]
 				&& i + 1 < kRowNum
-				&& _game_board[i + 1][j]->element_type == _game_board[i][j]->element_type)
+				&& _game_board[i + 1][j] == _game_board[i][j])
 			{
-				// 添加连着的竖向三个，跳过已添加的
-				if (!_game_board[i][j]->is_marked)
+				// 添加连着的竖向三个，跳过已添加的和已消除的（虽然有填充，但是保险起见）
+				if (_game_board[i][j] != kElementMarkedType && _game_board[i][j] != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i;
 					pos.col = j;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i][j]->is_marked = true;
+					_game_board[i][j] = kElementMarkedType;
 				}
-				if (!_game_board[i - 1][j]->is_marked)
+				if (_game_board[i - 1][j] != kElementMarkedType && _game_board[i - 1][j] != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i - 1;
 					pos.col = j;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i - 1][j]->is_marked = true;
+					_game_board[i - 1][j] = kElementMarkedType;
 				}
-				if (!_game_board[i + 1][j]->is_marked)
+				if (_game_board[i + 1][j] != kElementMarkedType && _game_board[i + 1][j] != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i + 1;
 					pos.col = j;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i + 1][j]->is_marked = true;
+					_game_board[i + 1][j] = kElementMarkedType;
 				}
 			}
 
 			// 判断左右是否相同
 			if (j - 1 >= 0
-				&& _game_board[i][j - 1]->element_type == _game_board[i][j]->element_type
+				&& _game_board[i][j - 1] == _game_board[i][j]
 				&& j + 1 < kColNum
-				&& _game_board[i][j + 1]->element_type == _game_board[i][j]->element_type)
+				&& _game_board[i][j + 1] == _game_board[i][j])
 			{
 				// 添加连着的横向三个，跳过已添加的
-				if (!_game_board[i][j]->is_marked)
+				if (_game_board[i][j] != kElementMarkedType && _game_board[i][j] != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i;
 					pos.col = j;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i][j]->is_marked = true;
+					_game_board[i][j] = kElementMarkedType;
 				}
-				if (!_game_board[i][j - 1]->is_marked)
+				if (_game_board[i][j - 1] != kElementMarkedType && _game_board[i][j - 1] != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i;
 					pos.col = j - 1;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i][j - 1]->is_marked = true;
+					_game_board[i][j - 1] = kElementMarkedType;
 				}
-				if (!_game_board[i][j + 1]->is_marked)
+				if (_game_board[i][j + 1] != kElementMarkedType && _game_board[i][j + 1] != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i;
 					pos.col = j + 1;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i][j + 1]->is_marked = true;
+					_game_board[i][j + 1] = kElementMarkedType;
 				}
 			}
 		}
@@ -251,10 +256,12 @@ void GameScene::batchEliminate(std::vector<ElementPos> &eliminate_list)
 
 	for (auto &pos : eliminate_list)
 	{
-		_game_board[pos.row][pos.col]->element_type = kElementEliminateType; // 标记成消除类型
-		_game_board[pos.row][pos.col]->setTexture(kEliminateStartImg); // 设置成消除纹理
-		_game_board[pos.row][pos.col]->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
-		_game_board[pos.row][pos.col]->vanish();
+		std::string elment_name = StringUtils::format("%d_%d", pos.row, pos.col);
+		Element *element = (Element *)(getChildByName(elment_name));
+		_game_board[pos.row][pos.col] = kElementEliminateType; // 标记成消除类型
+		element->setTexture(kEliminateStartImg); // 设置成消除纹理
+		element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
+		element->vanish();
 	}
 		
 	// 下降精灵填充空白
@@ -407,11 +414,12 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 						//if (checkGameDead())
 							//CCLOG("the game is dead");
 					}
-					/*else
+					else
 					{
 						CCLOG("no available eliminate, swap back");
-						swapElementPair(_start_pos, cur_pos);
-					}*/
+						//swapElementPair(_start_pos, cur_pos);
+						swapElementPair(cur_pos, _start_pos);
+					}
 
 					// 回归非移动状态
 					_is_moving = false;
