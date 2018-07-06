@@ -14,9 +14,6 @@ const std::vector<std::string> kElementImgArray{
 	"images/candy_blue.png"
 };
 
-// 标记为待消除类型
-const int kElementMarkedType = -1;
-
 // 消除时候类型和纹理
 const int kElementEliminateType = 10;
 const std::string kEliminateStartImg = "images/star.png";
@@ -66,13 +63,13 @@ bool GameScene::init()
 	srand(unsigned(time(0))); // 初始化随机数发生器
 	for (int i = 0; i < kRowNum; i++)
 	{
-		std::vector<int> line_elements;
+		std::vector<ElementProto> line_elements;
 		for (int j = 0; j < kColNum; j++)
 		{
 			Element *element = Element::create();
 			int random_index = getRandomSpriteIndex(kElementImgArray.size()); // 随机生成精灵
-			element->setTexture(kElementImgArray[random_index]); // 添加随机纹理	
 			element->element_type = random_index;
+			element->setTexture(kElementImgArray[random_index]); // 添加随机纹理	
 			element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 			element->setPosition(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size); // FIXME:紧密排布，中间没有缝隙, 0.5是为了对齐锚点
 			
@@ -80,7 +77,10 @@ bool GameScene::init()
 			element->setName(elment_name); // 每个界面精灵给一个唯一的名字标号便于后续寻找
 			addChild(element, 1);
 
-			line_elements.push_back(element->element_type);
+			ElementProto element_proto;
+			element_proto.type = element->element_type;
+			element_proto.marked = false;
+			line_elements.push_back(element_proto);
 		}
 		_game_board.push_back(line_elements);
 	}
@@ -141,16 +141,20 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 	Vec2 position1 = element1->getPosition();
 	Vec2 position2 = element2->getPosition();
 
-	CCLOG("position1, x: %f, y: %f", position1.x, position2.y);
+	CCLOG("position1, x: %f, y: %f", position1.x, position1.y);
 	CCLOG("position2, x: %f, y: %f", position2.x, position2.y);
 
 	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
 	MoveTo *move_2to1 = MoveTo::create(0.2, position1);
 
-	// 交换名称
+	// 交换位置
 	element1->runAction(move_1to2);
 	element2->runAction(move_2to1);
 
+	//element1->setPosition(position2);
+	//element2->setPosition(position1);
+
+	// 交换名称
 	element1->setName(name2);
 	element2->setName(name1);
 
@@ -173,73 +177,73 @@ std::vector<ElementPos> GameScene::checkEliminate()
 		{
 			// 判断上下是否相同
 			if (i - 1 >= 0
-				&& _game_board[i - 1][j] == _game_board[i][j]
+				&& _game_board[i - 1][j].type == _game_board[i][j].type
 				&& i + 1 < kRowNum
-				&& _game_board[i + 1][j] == _game_board[i][j])
+				&& _game_board[i + 1][j].type == _game_board[i][j].type)
 			{
 				// 添加连着的竖向三个，跳过已添加的和已消除的（虽然有填充，但是保险起见）
-				if (_game_board[i][j] != kElementMarkedType && _game_board[i][j] != kElementEliminateType)
+				if (!_game_board[i][j].marked && _game_board[i][j].type != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i;
 					pos.col = j;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i][j] = kElementMarkedType;
+					_game_board[i][j].marked = true;
 				}
-				if (_game_board[i - 1][j] != kElementMarkedType && _game_board[i - 1][j] != kElementEliminateType)
+				if (!_game_board[i - 1][j].marked && _game_board[i - 1][j].type != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i - 1;
 					pos.col = j;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i - 1][j] = kElementMarkedType;
+					_game_board[i - 1][j].marked = true;
 				}
-				if (_game_board[i + 1][j] != kElementMarkedType && _game_board[i + 1][j] != kElementEliminateType)
+				if (!_game_board[i + 1][j].marked && _game_board[i + 1][j].type != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i + 1;
 					pos.col = j;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i + 1][j] = kElementMarkedType;
+					_game_board[i + 1][j].marked = true;
 				}
 			}
 
 			// 判断左右是否相同
 			if (j - 1 >= 0
-				&& _game_board[i][j - 1] == _game_board[i][j]
+				&& _game_board[i][j - 1].type == _game_board[i][j].type
 				&& j + 1 < kColNum
-				&& _game_board[i][j + 1] == _game_board[i][j])
+				&& _game_board[i][j + 1].type == _game_board[i][j].type)
 			{
 				// 添加连着的横向三个，跳过已添加的
-				if (_game_board[i][j] != kElementMarkedType && _game_board[i][j] != kElementEliminateType)
+				if (!_game_board[i][j].marked && _game_board[i][j].type != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i;
 					pos.col = j;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i][j] = kElementMarkedType;
+					_game_board[i][j].marked = true;
 				}
-				if (_game_board[i][j - 1] != kElementMarkedType && _game_board[i][j - 1] != kElementEliminateType)
+				if (!_game_board[i][j - 1].marked && _game_board[i][j - 1].type != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i;
 					pos.col = j - 1;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i][j - 1] = kElementMarkedType;
+					_game_board[i][j - 1].marked = true;
 				}
-				if (_game_board[i][j + 1] != kElementMarkedType && _game_board[i][j + 1] != kElementEliminateType)
+				if (!_game_board[i][j + 1].marked && _game_board[i][j + 1].type != kElementEliminateType)
 				{
 					ElementPos pos;
 					pos.row = i;
 					pos.col = j + 1;
 
 					res_eliminate_list.push_back(pos);
-					_game_board[i][j + 1] = kElementMarkedType;
+					_game_board[i][j + 1].marked = true;
 				}
 			}
 		}
@@ -258,13 +262,13 @@ void GameScene::batchEliminate(std::vector<ElementPos> &eliminate_list)
 	{
 		std::string elment_name = StringUtils::format("%d_%d", pos.row, pos.col);
 		Element *element = (Element *)(getChildByName(elment_name));
-		_game_board[pos.row][pos.col] = kElementEliminateType; // 标记成消除类型
+		_game_board[pos.row][pos.col].type = kElementEliminateType; // 标记成消除类型
 		element->setTexture(kEliminateStartImg); // 设置成消除纹理
 		element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 		element->vanish();
 	}
 		
-	// 下降精灵填充空白
+	// 下降精灵填充空白 type, marked
 	
 }
 
@@ -417,8 +421,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 					else
 					{
 						CCLOG("no available eliminate, swap back");
-						//swapElementPair(_start_pos, cur_pos);
-						swapElementPair(cur_pos, _start_pos);
+						swapElementPair(_start_pos, cur_pos);
 					}
 
 					// 回归非移动状态
