@@ -122,6 +122,17 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 	return pos;
 }
 
+void GameScene::generateGameBoard()
+{
+
+}
+
+void GameScene::fillVacantElements()
+{
+
+}
+
+
 void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 {
 	// 交换时禁止可触摸状态
@@ -141,26 +152,30 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 	Vec2 position1 = element1->getPosition();
 	Vec2 position2 = element2->getPosition();
 
-	CCLOG("position1, x: %f, y: %f", position1.x, position1.y);
-	CCLOG("position2, x: %f, y: %f", position2.x, position2.y);
+	CCLOG("before move");
+	CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
+	CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 
 	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
 	MoveTo *move_2to1 = MoveTo::create(0.2, position1);
 
-	// 交换位置
-	element1->runAction(move_1to2);
-	element2->runAction(move_2to1);
+	// 交换位置，只是动画，并不会改变实际position
+	//element1->runAction(move_1to2);
+	//element2->runAction(move_2to1);
 
-	//element1->setPosition(position2);
-	//element2->setPosition(position1);
+	// 必须重新设置position
+	element1->setPosition(position2);
+	element2->setPosition(position1);
+
+	CCLOG("after move");
+	CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
+	CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 
 	// 交换名称
 	element1->setName(name2);
 	element2->setName(name1);
 
-	// 注意如果反向变换可能导致动画出错
-
-	// 内存中交换
+	// 内存中交换精灵类型
 	std::swap(_game_board[p1.row][p1.col], _game_board[p2.row][p2.col]);
 
 	// 恢复触摸状态
@@ -251,7 +266,7 @@ std::vector<ElementPos> GameScene::checkEliminate()
 	return res_eliminate_list;
 }
 
-void GameScene::batchEliminate(std::vector<ElementPos> &eliminate_list)
+void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 {
 	// 切换精灵图标并消失
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
@@ -272,10 +287,6 @@ void GameScene::batchEliminate(std::vector<ElementPos> &eliminate_list)
 	
 }
 
-void GameScene::fillVacantElements()
-{
-	
-}
 
 bool GameScene::checkGameDead()
 {
@@ -420,8 +431,9 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 					}
 					else
 					{
-						CCLOG("no available eliminate, swap back");
+						CCLOG("no available eliminate, need to swap back");
 						swapElementPair(_start_pos, cur_pos);
+					
 					}
 
 					// 回归非移动状态
