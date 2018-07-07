@@ -4,6 +4,12 @@
 
 USING_NS_CC;
 
+// 场景中的层次，数字大的在上层
+const int kBackGroundLevel = 0; // 背景层
+const int kGameBoardLevel = 1;  // 实际的游戏精灵层
+const int kElementAnimationLevel = 3; // 专门用于展示动画的层
+const int kMenuLevel = 5; // 菜单层
+
 // 精灵纹理文件，索引值就是类型
 const std::vector<std::string> kElementImgArray{
 	"images/diamond_red.png",
@@ -17,7 +23,6 @@ const std::vector<std::string> kElementImgArray{
 // 消除时候类型和纹理
 const int kElementEliminateType = 10;
 const std::string kEliminateStartImg = "images/star.png";
-
 
 // 界面边距
 const float kLeftMargin = 20;
@@ -56,34 +61,10 @@ bool GameScene::init()
 	// 加载游戏界面背景
 	Sprite *game_background = Sprite::create("images/game_bg.jpg");
 	game_background->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
-	addChild(game_background, 0);
+	addChild(game_background, kBackGroundLevel);
 
-	// 添加消除对象矩阵，游戏逻辑与界面解耦
-	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
-	srand(unsigned(time(0))); // 初始化随机数发生器
-	for (int i = 0; i < kRowNum; i++)
-	{
-		std::vector<ElementProto> line_elements;
-		for (int j = 0; j < kColNum; j++)
-		{
-			Element *element = Element::create();
-			int random_index = getRandomSpriteIndex(kElementImgArray.size()); // 随机生成精灵
-			element->element_type = random_index;
-			element->setTexture(kElementImgArray[random_index]); // 添加随机纹理	
-			element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
-			element->setPosition(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size); // FIXME:紧密排布，中间没有缝隙, 0.5是为了对齐锚点
-			
-			std::string elment_name = StringUtils::format("%d_%d", i, j);
-			element->setName(elment_name); // 每个界面精灵给一个唯一的名字标号便于后续寻找
-			addChild(element, 1);
-
-			ElementProto element_proto;
-			element_proto.type = element->element_type;
-			element_proto.marked = false;
-			line_elements.push_back(element_proto);
-		}
-		_game_board.push_back(line_elements);
-	}
+	// 初始化游戏地图
+	generateGameBoard();
 
 	// 初始触摸坐标
 	_start_pos.row = -1;
@@ -124,7 +105,44 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 
 void GameScene::generateGameBoard()
 {
+	// 获得屏幕尺寸常量(必须在类函数里获取)
+	const Size kScreenSize = Director::getInstance()->getVisibleSize();
+	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
 
+	// 添加消除对象矩阵，游戏逻辑与界面解耦
+	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
+	srand(unsigned(time(0))); // 初始化随机数发生器
+	for (int i = 0; i < kRowNum; i++)
+	{
+		std::vector<ElementProto> line_elements;
+		for (int j = 0; j < kColNum; j++)
+		{
+			Element *element = Element::create();
+			int random_index = getRandomSpriteIndex(kElementImgArray.size()); // 随机生成精灵
+			element->element_type = random_index;
+			element->setTexture(kElementImgArray[random_index]); // 添加随机纹理	
+			element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
+
+			// 添加掉落特效
+			Point init_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size + 0.5 * element_size);
+			element->setPosition(init_position);
+			Point real_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size);
+			Sequence *sequence = Sequence::create(MoveTo::create(0.5, real_position), CallFunc::create([=]() {
+				element->setPosition(real_position); // lambda回调，设置最终真实位置
+			}), NULL);
+			element->runAction(sequence);
+		
+			std::string elment_name = StringUtils::format("%d_%d", i, j);
+			element->setName(elment_name); // 每个界面精灵给一个唯一的名字标号便于后续寻找
+			addChild(element, kGameBoardLevel);
+
+			ElementProto element_proto;
+			element_proto.type = element->element_type;
+			element_proto.marked = false;
+			line_elements.push_back(element_proto);
+		}
+		_game_board.push_back(line_elements);
+	}
 }
 
 void GameScene::fillVacantElements()
@@ -132,8 +150,7 @@ void GameScene::fillVacantElements()
 
 }
 
-
-void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
+void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 {
 	// 交换时禁止可触摸状态
 	_is_can_touch = false;
@@ -142,41 +159,92 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2)
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
 	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
 
-	// 交换两个元素，矩阵变换，动画变换
+	// 交换的逻辑，分3个层次
+	// 内存，游戏精灵层，动画精灵层
+	// 顺序需要根据反应速度由先到后，由同步到异步
+
+	// 获得原始精灵相关信息
 	std::string name1 = StringUtils::format("%d_%d", p1.row, p1.col);
 	std::string name2 = StringUtils::format("%d_%d", p2.row, p2.col);
-	Node *element1 = getChildByName(name1);
-	Node *element2 = getChildByName(name2);
 
-	// 原始位置信息
-	Vec2 position1 = element1->getPosition();
-	Vec2 position2 = element2->getPosition();
+	Element *element1 = (Element *)getChildByName(name1);
+	Element *element2 = (Element *)getChildByName(name2);
+
+	Point position1 = element1->getPosition();
+	Point position2 = element2->getPosition();
+
+	int type1 = element1->element_type;
+	int type2 = element2->element_type;
 
 	CCLOG("before move");
+
+	CCLOG("p1 name: %s", element1->getName().c_str());
+	CCLOG("p2 name: %s", element2->getName().c_str());
+
 	CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
 	CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 
-	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
-	MoveTo *move_2to1 = MoveTo::create(0.2, position1);
+	// ---- 实际交换
+	// 内存中交换精灵类型
+	std::swap(_game_board[p1.row][p1.col], _game_board[p2.row][p2.col]);
 
-	// 交换位置，只是动画，并不会改变实际position
-	//element1->runAction(move_1to2);
-	//element2->runAction(move_2to1);
-
-	// 必须重新设置position
+	// 交换位置
 	element1->setPosition(position2);
 	element2->setPosition(position1);
-
-	CCLOG("after move");
-	CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
-	CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 
 	// 交换名称
 	element1->setName(name2);
 	element2->setName(name1);
 
-	// 内存中交换精灵类型
-	std::swap(_game_board[p1.row][p1.col], _game_board[p2.row][p2.col]);
+	CCLOG("after move");
+
+	CCLOG("p1 name: %s", element1->getName().c_str());
+	CCLOG("p2 name: %s", element2->getName().c_str());
+
+	CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
+	CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
+
+	// ---- 动画交换 ----
+	// 先隐藏实际的精灵
+	element1->setVisible(false);
+	element2->setVisible(false);
+
+	//// 添加动画层精灵
+	Element *dummy_element1 = Element::create();
+	dummy_element1->element_type = type1;
+	dummy_element1->setTexture(kElementImgArray[type1]); 
+	dummy_element1->setContentSize(Size(element_size, element_size)); 
+	dummy_element1->setPosition(position1);
+	addChild(dummy_element1, kElementAnimationLevel); // 添加到动画层
+
+	Element *dummy_element2 = Element::create();
+	dummy_element2->element_type = type2;
+	dummy_element2->setTexture(kElementImgArray[type2]);
+	dummy_element2->setContentSize(Size(element_size, element_size));
+	dummy_element2->setPosition(position2);
+	addChild(dummy_element2, kElementAnimationLevel);
+
+	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
+	MoveTo *move_2to1 = MoveTo::create(0.2, position1);
+
+	// 根据是否反向交换来决定是否延时
+	float delay_time = is_reverse ? 3 : 0;
+	DelayTime *delay = DelayTime::create(delay_time);
+
+	dummy_element1->runAction(Sequence::create(delay, move_1to2, CallFunc::create([=]() {
+		// lambda表达式动画回调注意要用 = 捕获外部指针
+
+		// 动画完成之后先销毁动画层精灵，再显示真实精灵
+		dummy_element1->removeFromParent();
+		element1->setVisible(true);
+	}), NULL));
+	dummy_element2->runAction(Sequence::create(delay, move_2to1, CallFunc::create([=]() {
+		// lambda表达式动画回调注意要用 = 捕获外部指针
+
+		// 动画完成之后先销毁动画层精灵，再显示真实精灵
+		dummy_element2->removeFromParent();
+		element2->setVisible(true);
+	}), NULL));
 
 	// 恢复触摸状态
 	_is_can_touch = true;
@@ -372,7 +440,6 @@ bool GameScene::onTouchBegan(Touch *touch, Event *event)
 		_is_moving = true;
 	}
 	
-	
 	return true;
 
 }
@@ -417,7 +484,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 				if (is_need_swap)
 				{
 					// 执行交换
-					swapElementPair(_start_pos, cur_pos);
+					swapElementPair(_start_pos, cur_pos, false);
 
 					// 交换事件后进行消除检查
 					auto eliminate_set = checkEliminate();
@@ -432,8 +499,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 					else
 					{
 						CCLOG("no available eliminate, need to swap back");
-						swapElementPair(_start_pos, cur_pos);
-					
+						swapElementPair(_start_pos, cur_pos, true);
 					}
 
 					// 回归非移动状态
