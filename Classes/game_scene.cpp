@@ -164,7 +164,7 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 	_is_can_touch = false;
 
 	// 因为是异步动画，交换前确保消除标志在复位状态
-	_is_can_elimate = kEliminateInitFlag;
+	//_is_can_elimate = kEliminateInitFlag;
 
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
@@ -202,7 +202,7 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 	std::swap(_game_board[p1.row][p1.col], _game_board[p2.row][p2.col]);
 
 	// 移动动画, move action并不会更新position
-	float delay_time = is_reverse ? 0.7 : 0;
+	float delay_time = is_reverse ? 0.5 : 0;
 	DelayTime *move_delay = DelayTime::create(delay_time); // 反向交换需要延时
 	
 	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
@@ -232,14 +232,6 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 		log("p2 name: %s", element2->getName().c_str());
 		log("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 	}), NULL));
-
-	// 交换位置
-	//element1->setPosition(position2);
-	//element2->setPosition(position1);
-
-	// 交换名称
-	//element1->setName(name2);
-	//element2->setName(name1);
 
 	// 恢复触摸状态
 	_is_can_touch = true;
@@ -353,6 +345,7 @@ void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 
 bool GameScene::checkGameDead()
 {
+
 	// 全盘扫描，尝试移动每个元素到四个方向，如果都没有可消除的，则游戏陷入僵局
 	bool is_game_dead = true;
 	for (int i = 0; i < kRowNum; i++)
@@ -424,6 +417,10 @@ bool GameScene::checkGameDead()
 
 void GameScene::update(float dt)
 {
+	if (_start_pos.row == -1 && _start_pos.col == -1
+		&& _end_pos.row == -1 && _end_pos.col == -1)
+		_is_can_elimate = kEliminateInitFlag;
+
 	log("eliminate flag: %d", _is_can_elimate);
 
 	// 每帧检查是否僵局
