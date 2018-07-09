@@ -409,6 +409,10 @@ bool GameScene::checkGameDead()
 				std::swap(_game_board[i][j], _game_board[i][j + 1]);
 			}
 		}
+
+		// 如果判断不是僵局，则跳出循环
+		if (!is_game_dead)
+			break;
 	}
 
 	// 如果最后所有精灵都找不到可消除的
