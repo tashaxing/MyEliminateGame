@@ -29,7 +29,7 @@ bool MenuScene::init()
 	
 	// 用lambda表达式作为菜单回调
 	MenuItemLabel *start_menu_item = MenuItemLabel::create(start_label, [&](Ref *sender) {
-		CCLOG("click start game"); // 注意，只有debug模式才会输出log
+		log("click start game"); // 注意，只有debug模式才会输出log
 
 		// 转场到游戏主界面
 		Scene *main_game_scene = GameScene::createScene();

@@ -7,7 +7,6 @@ USING_NS_CC;
 // 场景中的层次，数字大的在上层
 const int kBackGroundLevel = 0; // 背景层
 const int kGameBoardLevel = 1;  // 实际的游戏精灵层
-const int kElementAnimationLevel = 3; // 专门用于展示动画的层
 const int kMenuLevel = 5; // 菜单层
 
 // 精灵纹理文件，索引值就是类型
@@ -32,6 +31,11 @@ const float kBottonMargin = 70;
 // 精灵使数量
 const int kRowNum = 8;
 const int kColNum = 8;
+
+// 可消除状态枚举
+const int kEliminateInitFlag = 0;
+const int kEliminateOneReadyFlag = 1;
+const int KEliminateTwoReadyFlag = 2;
 
 // 获得随机精灵纹理索引
 int getRandomSpriteIndex(int len)
@@ -76,6 +80,7 @@ bool GameScene::init()
 	// 初始移动状态
 	_is_moving = false;
 	_is_can_touch = true;
+	_is_can_elimate = 0; // 0, 1, 2三个等级，0为初始，1表示一个精灵ready，2表示两个精灵ready，可以消除
 
 	// 添加触摸事件监听
 	EventListenerTouchOneByOne *touch_listener = EventListenerTouchOneByOne::create();
@@ -83,6 +88,9 @@ bool GameScene::init()
 	touch_listener->onTouchMoved = CC_CALLBACK_2(GameScene::onTouchMoved, this);
 	touch_listener->onTouchEnded = CC_CALLBACK_2(GameScene::onTouchEnded, this);
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(touch_listener, this); // 父类的 _eventDispatcher
+
+	// 默认渲染循环调度器
+	scheduleUpdate();
 
 	return true;
 }
@@ -155,6 +163,9 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 	// 交换时禁止可触摸状态
 	_is_can_touch = false;
 
+	// 因为是异步动画，交换前确保消除标志在复位状态
+	_is_can_elimate = kEliminateInitFlag;
+
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
 	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
@@ -176,75 +187,59 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 	int type1 = element1->element_type;
 	int type2 = element2->element_type;
 
-	CCLOG("before move");
+	log(is_reverse ? "==== reverse move ====" : "==== normal move ====");
 
-	CCLOG("p1 name: %s", element1->getName().c_str());
-	CCLOG("p2 name: %s", element2->getName().c_str());
+	log("before move");
 
-	CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
-	CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
+	log("p1 name: %s", element1->getName().c_str());
+	log("p2 name: %s", element2->getName().c_str());
+
+	log("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
+	log("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 
 	// ---- 实际交换
 	// 内存中交换精灵类型
 	std::swap(_game_board[p1.row][p1.col], _game_board[p2.row][p2.col]);
 
-	// 交换位置
-	element1->setPosition(position2);
-	element2->setPosition(position1);
-
-	// 交换名称
-	element1->setName(name2);
-	element2->setName(name1);
-
-	CCLOG("after move");
-
-	CCLOG("p1 name: %s", element1->getName().c_str());
-	CCLOG("p2 name: %s", element2->getName().c_str());
-
-	CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
-	CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
-
-	// ---- 动画交换 ----
-	// 先隐藏实际的精灵
-	element1->setVisible(false);
-	element2->setVisible(false);
-
-	//// 添加动画层精灵
-	Element *dummy_element1 = Element::create();
-	dummy_element1->element_type = type1;
-	dummy_element1->setTexture(kElementImgArray[type1]); 
-	dummy_element1->setContentSize(Size(element_size, element_size)); 
-	dummy_element1->setPosition(position1);
-	addChild(dummy_element1, kElementAnimationLevel); // 添加到动画层
-
-	Element *dummy_element2 = Element::create();
-	dummy_element2->element_type = type2;
-	dummy_element2->setTexture(kElementImgArray[type2]);
-	dummy_element2->setContentSize(Size(element_size, element_size));
-	dummy_element2->setPosition(position2);
-	addChild(dummy_element2, kElementAnimationLevel);
-
+	// 移动动画, move action并不会更新position
+	float delay_time = is_reverse ? 0.7 : 0;
+	DelayTime *move_delay = DelayTime::create(delay_time); // 反向交换需要延时
+	
 	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
 	MoveTo *move_2to1 = MoveTo::create(0.2, position1);
 
-	// 根据是否反向交换来决定是否延时
-	float delay_time = is_reverse ? 3 : 0;
-	DelayTime *delay = DelayTime::create(delay_time);
+	log("after move");
+	element1->runAction(Sequence::create(move_delay, move_1to2, CallFunc::create([=]() {
+		// lambda 表达式回调，注意要用 = 捕获外部指针
+		// 重设位置，
+		log("e1 moved");
+		element1->setPosition(position2);
+		// 交换名称
+		element1->setName(name2);
 
-	dummy_element1->runAction(Sequence::create(delay, move_1to2, CallFunc::create([=]() {
-		// lambda表达式动画回调注意要用 = 捕获外部指针
+		_is_can_elimate++;
 
-		// 动画完成之后先销毁动画层精灵，再显示真实精灵
-		dummy_element1->removeFromParent();
-		element1->setVisible(true);
+		log("p1 name: %s", element1->getName().c_str());
+		log("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
 	}), NULL));
-	dummy_element2->runAction(Sequence::create(delay, move_2to1, CallFunc::create([=]() {
-		// lambda表达式动画回调注意要用 = 捕获外部指针
+	element2->runAction(Sequence::create(move_delay, move_2to1, CallFunc::create([=]() {
+		log("e2 moved");
+		element2->setPosition(position1);
+		element2->setName(name1);
 
-		// 动画完成之后先销毁动画层精灵，再显示真实精灵
-		dummy_element2->removeFromParent();
-		element2->setVisible(true);
+		_is_can_elimate++;
+
+		log("p2 name: %s", element2->getName().c_str());
+		log("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 	}), NULL));
+
+	// 交换位置
+	//element1->setPosition(position2);
+	//element2->setPosition(position1);
+
+	// 交换名称
+	//element1->setName(name2);
+	//element2->setName(name1);
 
 	// 恢复触摸状态
 	_is_can_touch = true;
@@ -424,18 +419,67 @@ bool GameScene::checkGameDead()
 	}
 
 	// 如果最后所有精灵都找不到可消除的
-	return !is_game_dead;
+	return is_game_dead;
+}
+
+void GameScene::update(float dt)
+{
+	log("eliminate flag: %d", _is_can_elimate);
+
+	// 每帧检查是否僵局
+	if (checkGameDead())
+		log("the game is dead");
+
+	// 交换动画后判断是否可以消除
+	if (_is_can_elimate == KEliminateTwoReadyFlag)
+	{
+		auto eliminate_set = checkEliminate();
+		if (!eliminate_set.empty())
+		{
+			batchEliminate(eliminate_set);
+
+			// 消除完毕，还原标志位
+			_is_can_elimate = kEliminateInitFlag; 
+
+			// 复位移动起始位置
+			_start_pos.row = -1;
+			_start_pos.col = -1;
+
+			_end_pos.row = -1;
+			_end_pos.col = -1;
+		}
+		else
+		{
+			// 没有可消除的，如果刚交换过，需要交换回来
+			if (_start_pos.row >= 0 && _start_pos.row < kRowNum && _start_pos.col >= 0 && _start_pos.col < kColNum
+				&&_end_pos.row >= 0 && _end_pos.row < kRowNum && _end_pos.row >= 0 && _start_pos.col < kColNum
+				&& (_start_pos.row != _end_pos.row || _start_pos.col != _end_pos.col))
+			{
+				// 消除完毕，还原标志位，为反向交换准备
+				_is_can_elimate = kEliminateInitFlag;
+				swapElementPair(_start_pos, _end_pos, true);
+
+				// 复位移动起始位置
+				_start_pos.row = -1;
+				_start_pos.col = -1;
+
+				_end_pos.row = -1;
+				_end_pos.col = -1;
+			}
+				
+		}
+	}
 }
 
 bool GameScene::onTouchBegan(Touch *touch, Event *event)
 {
-	//CCLOG("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//log("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 	// 只有在可触摸条件下才可以
 	if (_is_can_touch)
 	{
 		// 记录开始触摸的精灵坐标
 		_start_pos = getElementPosByCoordinate(touch->getLocation().x, touch->getLocation().y);
-		CCLOG("start pos, row: %d, col: %d", _start_pos.row, _start_pos.col);
+		log("start pos, row: %d, col: %d", _start_pos.row, _start_pos.col);
 		// 每次触碰算一次新的移动过程
 		_is_moving = true;
 	}
@@ -446,7 +490,7 @@ bool GameScene::onTouchBegan(Touch *touch, Event *event)
 
 void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 {
-	//CCLOG("touch moved, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//log("touch moved, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 
 	// 只有在可触摸条件下才可以
 	if (_is_can_touch)
@@ -463,44 +507,27 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 
 			// 通过判断移动后触摸点的位置在哪个范围来决定移动的方向
 			Vec2 cur_loacation = touch->getLocation();
-			ElementPos cur_pos = getElementPosByCoordinate(cur_loacation.x, cur_loacation.y);
+			_end_pos = getElementPosByCoordinate(cur_loacation.x, cur_loacation.y);
 
 			if (_is_moving)
 			{
 				// 根据偏移方向交换精灵
-
 				bool is_need_swap = false;
 
-				CCLOG("cur pos, row: %d, col: %d", cur_pos.row, cur_pos.col);
-				if (_start_pos.col + 1 == cur_pos.col && _start_pos.row == cur_pos.row) // 水平向右
+				log("cur pos, row: %d, col: %d", _end_pos.row, _end_pos.col);
+				if (_start_pos.col + 1 == _end_pos.col && _start_pos.row == _end_pos.row) // 水平向右
 					is_need_swap = true;
-				else if (_start_pos.col - 1 == cur_pos.col && _start_pos.row == cur_pos.row) // 水平向左
+				else if (_start_pos.col - 1 == _end_pos.col && _start_pos.row == _end_pos.row) // 水平向左
 					is_need_swap = true;
-				else if (_start_pos.row + 1 == cur_pos.row && _start_pos.col == cur_pos.col) // 竖直向上
+				else if (_start_pos.row + 1 == _end_pos.row && _start_pos.col == _end_pos.col) // 竖直向上
 					is_need_swap = true;
-				else if (_start_pos.row - 1 == cur_pos.row && _start_pos.col == cur_pos.col) // 竖直向下
+				else if (_start_pos.row - 1 == _end_pos.row && _start_pos.col == _end_pos.col) // 竖直向下
 					is_need_swap = true;
 
 				if (is_need_swap)
 				{
 					// 执行交换
-					swapElementPair(_start_pos, cur_pos, false);
-
-					// 交换事件后进行消除检查
-					auto eliminate_set = checkEliminate();
-					if (!eliminate_set.empty())
-					{
-						batchEliminate(eliminate_set);
-
-						// 每次消除完检查是否僵局
-						//if (checkGameDead())
-							//CCLOG("the game is dead");
-					}
-					else
-					{
-						CCLOG("no available eliminate, need to swap back");
-						swapElementPair(_start_pos, cur_pos, true);
-					}
+					swapElementPair(_start_pos, _end_pos, false);
 
 					// 回归非移动状态
 					_is_moving = false;
@@ -513,7 +540,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 
 void GameScene::onTouchEnded(Touch *touch, Event *event)
 {
-	//CCLOG("touch end, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//log("touch end, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 	_is_moving = false;
 }
 
@@ -521,11 +548,11 @@ void GameScene::onEnter()
 {
 	// 必须先layer onenter 才能捕捉触摸事件
 	Layer::onEnter();
-	CCLOG("enter game scene");
+	log("enter game scene");
 }
 
 void GameScene::onExit()
 {
 	Layer::onExit();
-	CCLOG("exit game scene");
+	log("exit game scene");
 }

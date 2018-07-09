@@ -11,7 +11,6 @@ bool Element::init()
 
 	// ≥ı ºªØ
 	element_type = -1;
-	is_marked = false;
 
 	return true;
 }

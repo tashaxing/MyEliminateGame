@@ -34,6 +34,8 @@ public:
 	virtual void onEnter();
 	virtual void onExit();
 
+	void update(float dt);
+
 	// 触摸检测
 	virtual bool onTouchBegan(cocos2d::Touch *touch, cocos2d::Event *event);
 	virtual void onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event);
@@ -47,6 +49,7 @@ private:
 	ElementPos _start_pos, _end_pos; // 拖拽的起始和终止位置标号
 	bool _is_moving; // 是否在移动中
 	bool _is_can_touch; // 是否可触摸
+	int _is_can_elimate; // 是否可以消除状态（动画效果）
 	ElementPos getElementPosByCoordinate(float x, float y);
 	
 	void generateGameBoard(); // 随机生成整个游戏地图，不能有可消除的精灵
