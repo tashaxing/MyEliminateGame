@@ -237,8 +237,43 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 	_is_can_touch = true;
 }
 
+bool GameScene::hasEliminate()
+{
+	bool has_elminate = false;
+	for (int i = 0; i < kRowNum; i++)
+	{
+		for (int j = 0; j < kColNum; j++)
+		{
+			// 判断上下是否相同
+			if (i - 1 >= 0
+				&& _game_board[i - 1][j].type == _game_board[i][j].type
+				&& i + 1 < kRowNum
+				&& _game_board[i + 1][j].type == _game_board[i][j].type)
+			{
+				has_elminate = true;
+				break;
+			}
+
+			// 判断左右是否相同
+			if (j - 1 >= 0
+				&& _game_board[i][j - 1].type == _game_board[i][j].type
+				&& j + 1 < kColNum
+				&& _game_board[i][j + 1].type == _game_board[i][j].type)
+			{
+				has_elminate = true;
+				break;
+			}
+		}
+
+		if (has_elminate)
+			break;
+	}
+
+	return has_elminate;
+}
+
 // 全盘扫描检查可消除精灵，添加到可消除集合
-std::vector<ElementPos> GameScene::checkEliminate()
+std::vector<ElementPos> GameScene::getEliminateSet()
 {
 	std::vector<ElementPos> res_eliminate_list;
 	// 采用简单的二维扫描来确定可以三消的结果集，横竖连着大于或等于3个就消除，不用递归
@@ -357,8 +392,7 @@ bool GameScene::checkGameDead()
 			{
 				// 交换后判断，然后再交换回来
 				std::swap(_game_board[i][j], _game_board[i + 1][j]);
-				auto eliminate_set = checkEliminate();
-				if (!eliminate_set.empty())
+				if (hasEliminate())
 				{
 					is_game_dead = false;
 					std::swap(_game_board[i][j], _game_board[i + 1][j]);
@@ -371,8 +405,7 @@ bool GameScene::checkGameDead()
 			if (i > 0)
 			{
 				std::swap(_game_board[i][j], _game_board[i - 1][j]);
-				auto eliminate_set = checkEliminate();
-				if (!eliminate_set.empty())
+				if (hasEliminate())
 				{
 					is_game_dead = false;
 					std::swap(_game_board[i][j], _game_board[i - 1][j]);
@@ -385,8 +418,7 @@ bool GameScene::checkGameDead()
 			if (j > 0)
 			{
 				std::swap(_game_board[i][j], _game_board[i][j - 1]);
-				auto eliminate_set = checkEliminate();
-				if (!eliminate_set.empty())
+				if (hasEliminate())
 				{
 					is_game_dead = false;
 					std::swap(_game_board[i][j], _game_board[i][j - 1]);
@@ -399,8 +431,7 @@ bool GameScene::checkGameDead()
 			if (j < kColNum - 1)
 			{
 				std::swap(_game_board[i][j], _game_board[i][j + 1]);
-				auto eliminate_set = checkEliminate();
-				if (!eliminate_set.empty())
+				if (hasEliminate())
 				{
 					is_game_dead = false;
 					std::swap(_game_board[i][j], _game_board[i][j + 1]);
@@ -421,6 +452,7 @@ bool GameScene::checkGameDead()
 
 void GameScene::update(float dt)
 {
+	// 需要确保标记清除
 	if (_start_pos.row == -1 && _start_pos.col == -1
 		&& _end_pos.row == -1 && _end_pos.col == -1)
 		_is_can_elimate = kEliminateInitFlag;
@@ -434,7 +466,7 @@ void GameScene::update(float dt)
 	// 交换动画后判断是否可以消除
 	if (_is_can_elimate == KEliminateTwoReadyFlag)
 	{
-		auto eliminate_set = checkEliminate();
+		auto eliminate_set = getEliminateSet();
 		if (!eliminate_set.empty())
 		{
 			batchEliminate(eliminate_set);

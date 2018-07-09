@@ -55,7 +55,8 @@ private:
 	void generateGameBoard(); // 随机生成整个游戏地图，不能有可消除的精灵
 	void fillVacantElements(); // 填补空缺游戏地图，不能有可消除的精灵
 	void swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse); // 交换两个精灵
-	std::vector<ElementPos> checkEliminate(); // 检查可消除的精灵
+	bool hasEliminate(); // 检查是否有可以被消除的
+	std::vector<ElementPos> getEliminateSet(); // 获得可消除的精灵集合
 	void batchEliminate(const std::vector<ElementPos> &eliminate_list); // 执行消除
 	bool checkGameDead(); // 检查游戏是否结束
 };
