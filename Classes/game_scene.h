@@ -52,7 +52,8 @@ private:
 	int _is_can_elimate; // 是否可以消除状态（动画效果）
 	ElementPos getElementPosByCoordinate(float x, float y);
 	
-	void generateGameBoard(); // 随机生成整个游戏地图，不能有可消除的精灵
+	void fillGameBoard(int row, int col); // 在内存中随机填充游戏地图，确保没有可消除
+	void drawGameBoard(); // 绘制游戏地图界面
 	void fillVacantElements(); // 填补空缺游戏地图，不能有可消除的精灵
 	void swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse); // 交换两个精灵
 	bool hasEliminate(); // 检查是否有可以被消除的，不改变内存数据

@@ -68,7 +68,21 @@ bool GameScene::init()
 	addChild(game_background, kBackGroundLevel);
 
 	// 初始化游戏地图
-	generateGameBoard();
+	for (int i = 0; i < kRowNum; i++)
+	{
+		std::vector<ElementProto> line_elements;
+		for (int j = 0; j < kRowNum; j++)
+		{
+			ElementProto element_proto;
+			element_proto.type = kElementEliminateType; // 初始化置成消除状态，便于后续生成
+			element_proto.marked = false;
+
+			line_elements.push_back(element_proto);
+		}
+		_game_board.push_back(line_elements);
+	}
+		
+	drawGameBoard();
 
 	// 初始触摸坐标
 	_start_pos.row = -1;
@@ -111,24 +125,63 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 	return pos;
 }
 
-void GameScene::generateGameBoard()
+void GameScene::fillGameBoard(int row, int col)
 {
+	// 遇到边界则返回
+	if (row == -1 || row == kRowNum || col == -1 || col == kColNum)
+		return;
+
+	int random_type = getRandomSpriteIndex(kElementImgArray.size());
+
+	if (_game_board[row][col].type == kElementEliminateType)
+	{
+		_game_board[row][col].type = random_type;
+		
+		if (!hasEliminate())
+		{
+			// 四个方向递归调用
+			fillGameBoard(row + 1, col);
+			fillGameBoard(row - 1, col);
+			fillGameBoard(row, col - 1);
+			fillGameBoard(row, col + 1);
+		}
+		else
+			_game_board[row][col].type = kElementEliminateType; // 还原
+	}
+}
+
+void GameScene::drawGameBoard()
+{
+	srand(unsigned(time(0))); // 初始化随机数发生器
+
+	// 先在内存中生成，保证初始没有可消除的
+	
+
 	// 获得屏幕尺寸常量(必须在类函数里获取)
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
 
 	// 添加消除对象矩阵，游戏逻辑与界面解耦
 	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
-	srand(unsigned(time(0))); // 初始化随机数发生器
+	
 	for (int i = 0; i < kRowNum; i++)
 	{
 		std::vector<ElementProto> line_elements;
 		for (int j = 0; j < kColNum; j++)
 		{
+			// 随机生成精灵类型
+			int random_type = getRandomSpriteIndex(kElementImgArray.size()); 
+
+			// 内存添加精灵结构体
+			ElementProto element_proto;
+			element_proto.type = random_type;
+			element_proto.marked = false;
+			_game_board[i][j] = element_proto;
+
 			Element *element = Element::create();
-			int random_index = getRandomSpriteIndex(kElementImgArray.size()); // 随机生成精灵
-			element->element_type = random_index;
-			element->setTexture(kElementImgArray[random_index]); // 添加随机纹理	
+			
+			element->element_type = random_type;
+			element->setTexture(kElementImgArray[random_type]); // 添加随机纹理	
 			element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 
 			// 添加掉落特效
@@ -142,14 +195,8 @@ void GameScene::generateGameBoard()
 		
 			std::string elment_name = StringUtils::format("%d_%d", i, j);
 			element->setName(elment_name); // 每个界面精灵给一个唯一的名字标号便于后续寻找
-			addChild(element, kGameBoardLevel);
-
-			ElementProto element_proto;
-			element_proto.type = element->element_type;
-			element_proto.marked = false;
-			line_elements.push_back(element_proto);
+			addChild(element, kGameBoardLevel);	
 		}
-		_game_board.push_back(line_elements);
 	}
 }
 
