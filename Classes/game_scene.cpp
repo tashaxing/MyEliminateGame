@@ -82,6 +82,7 @@ bool GameScene::init()
 		_game_board.push_back(line_elements);
 	}
 		
+	// 绘制游戏地图
 	drawGameBoard();
 
 	// 初始触摸坐标
@@ -125,21 +126,25 @@ ElementPos GameScene::getElementPosByCoordinate(float x, float y)
 	return pos;
 }
 
+// 填充空白游戏地图，保证没有可消除的组合，（此算法目前是work的，但并不完美）
 void GameScene::fillGameBoard(int row, int col)
 {
 	// 遇到边界则返回
 	if (row == -1 || row == kRowNum || col == -1 || col == kColNum)
 		return;
 
+	// 随机生成类型
 	int random_type = getRandomSpriteIndex(kElementImgArray.size());
 
+	// 填充
 	if (_game_board[row][col].type == kElementEliminateType)
 	{
 		_game_board[row][col].type = random_type;
 		
+		// 如果没有消除则继续填充
 		if (!hasEliminate())
 		{
-			// 四个方向递归调用
+			// 四个方向递归填充
 			fillGameBoard(row + 1, col);
 			fillGameBoard(row - 1, col);
 			fillGameBoard(row, col - 1);
@@ -155,7 +160,7 @@ void GameScene::drawGameBoard()
 	srand(unsigned(time(0))); // 初始化随机数发生器
 
 	// 先在内存中生成，保证初始没有可消除的
-	
+	fillGameBoard(0, 0);
 
 	// 获得屏幕尺寸常量(必须在类函数里获取)
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
@@ -166,22 +171,12 @@ void GameScene::drawGameBoard()
 	
 	for (int i = 0; i < kRowNum; i++)
 	{
-		std::vector<ElementProto> line_elements;
 		for (int j = 0; j < kColNum; j++)
 		{
-			// 随机生成精灵类型
-			int random_type = getRandomSpriteIndex(kElementImgArray.size()); 
-
-			// 内存添加精灵结构体
-			ElementProto element_proto;
-			element_proto.type = random_type;
-			element_proto.marked = false;
-			_game_board[i][j] = element_proto;
-
 			Element *element = Element::create();
 			
-			element->element_type = random_type;
-			element->setTexture(kElementImgArray[random_type]); // 添加随机纹理	
+			element->element_type = _game_board[i][j].type;
+			element->setTexture(kElementImgArray[element->element_type]); // 添加随机纹理	
 			element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 
 			// 添加掉落特效
@@ -202,7 +197,28 @@ void GameScene::drawGameBoard()
 
 void GameScene::fillVacantElements()
 {
+	// 精灵下降填补空白
+	for (int j = 0; j < kColNum; j++)
+	{
+		std::vector<Element *> elements;
+		for (int i = 0; i < kRowNum; i++)
+		{
+			if (_game_board[i][j].type != kElementEliminateType)
+			{
+				std::string element_name = StringUtils::format("%d_%d", i, j);
+				Element *element = (Element *)getChildByName(element_name);
+				elements.push_back(element);
+			}
+		}
 
+		// 每列下降
+		int k = 0;
+		while (k < kRowNum)
+		{
+			// 填补空白
+		}
+	}
+		
 }
 
 void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
