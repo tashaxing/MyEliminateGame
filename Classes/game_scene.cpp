@@ -163,9 +163,6 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 	// 交换时禁止可触摸状态
 	_is_can_touch = false;
 
-	// 因为是异步动画，交换前确保消除标志在复位状态
-	//_is_can_elimate = kEliminateInitFlag;
-
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
 	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
@@ -244,24 +241,32 @@ bool GameScene::hasEliminate()
 	{
 		for (int j = 0; j < kColNum; j++)
 		{
-			// 判断上下是否相同
-			if (i - 1 >= 0
-				&& _game_board[i - 1][j].type == _game_board[i][j].type
-				&& i + 1 < kRowNum
-				&& _game_board[i + 1][j].type == _game_board[i][j].type)
+			// 要保证精灵和交换的精灵都不是标记为消除
+			if (_game_board[i][j].type != kElementEliminateType)
 			{
-				has_elminate = true;
-				break;
-			}
+				// 判断上下是否相同
+				if (i - 1 >= 0
+					&& _game_board[i - 1][j].type != kElementEliminateType
+					&& _game_board[i - 1][j].type == _game_board[i][j].type
+					&& i + 1 < kRowNum
+					&& _game_board[i + 1][j].type != kElementEliminateType
+					&& _game_board[i + 1][j].type == _game_board[i][j].type)
+				{
+					has_elminate = true;
+					break;
+				}
 
-			// 判断左右是否相同
-			if (j - 1 >= 0
-				&& _game_board[i][j - 1].type == _game_board[i][j].type
-				&& j + 1 < kColNum
-				&& _game_board[i][j + 1].type == _game_board[i][j].type)
-			{
-				has_elminate = true;
-				break;
+				// 判断左右是否相同
+				if (j - 1 >= 0
+					&& _game_board[i][j - 1].type != kElementEliminateType
+					&& _game_board[i][j - 1].type == _game_board[i][j].type
+					&& j + 1 < kColNum
+					&& _game_board[i][j - 1].type != kElementEliminateType
+					&& _game_board[i][j + 1].type == _game_board[i][j].type)
+				{
+					has_elminate = true;
+					break;
+				}
 			}
 		}
 
@@ -378,11 +383,15 @@ void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 }
 
 
-bool GameScene::checkGameDead()
+ElementPos GameScene::checkGameHint()
 {
-
 	// 全盘扫描，尝试移动每个元素到四个方向，如果都没有可消除的，则游戏陷入僵局
-	bool is_game_dead = true;
+
+	// 初始化提示点
+	ElementPos game_hint_point;
+	game_hint_point.row = -1;
+	game_hint_point.col = -1;
+
 	for (int i = 0; i < kRowNum; i++)
 	{
 		for (int j = 0; j < kColNum; j++)
@@ -394,7 +403,10 @@ bool GameScene::checkGameDead()
 				std::swap(_game_board[i][j], _game_board[i + 1][j]);
 				if (hasEliminate())
 				{
-					is_game_dead = false;
+					game_hint_point.row = i;
+					game_hint_point.col = j;
+
+					// 注意这里虽然交换了内存数据，但是消除flag并不是可以动画的状态，所以不会影响到游戏
 					std::swap(_game_board[i][j], _game_board[i + 1][j]);
 					break;
 				}
@@ -407,9 +419,11 @@ bool GameScene::checkGameDead()
 				std::swap(_game_board[i][j], _game_board[i - 1][j]);
 				if (hasEliminate())
 				{
-					is_game_dead = false;
+					game_hint_point.row = i;
+					game_hint_point.col = j;
+
 					std::swap(_game_board[i][j], _game_board[i - 1][j]);
-					break;
+					break; // 找到一个点就跳出
 				}
 				std::swap(_game_board[i][j], _game_board[i - 1][j]);
 			}
@@ -420,7 +434,9 @@ bool GameScene::checkGameDead()
 				std::swap(_game_board[i][j], _game_board[i][j - 1]);
 				if (hasEliminate())
 				{
-					is_game_dead = false;
+					game_hint_point.row = i;
+					game_hint_point.col = j;
+
 					std::swap(_game_board[i][j], _game_board[i][j - 1]);
 					break;
 				}
@@ -433,7 +449,9 @@ bool GameScene::checkGameDead()
 				std::swap(_game_board[i][j], _game_board[i][j + 1]);
 				if (hasEliminate())
 				{
-					is_game_dead = false;
+					game_hint_point.row = i;
+					game_hint_point.col = j;
+
 					std::swap(_game_board[i][j], _game_board[i][j + 1]);
 					break;
 				}
@@ -442,12 +460,12 @@ bool GameScene::checkGameDead()
 		}
 
 		// 如果判断不是僵局，则跳出循环
-		if (!is_game_dead)
+		if (game_hint_point.row != -1 && game_hint_point.col != -1)
 			break;
 	}
 
 	// 如果最后所有精灵都找不到可消除的
-	return is_game_dead;
+	return game_hint_point;
 }
 
 void GameScene::update(float dt)
@@ -460,8 +478,11 @@ void GameScene::update(float dt)
 	log("eliminate flag: %d", _is_can_elimate);
 
 	// 每帧检查是否僵局
-	if (checkGameDead())
+	ElementPos game_hint_point = checkGameHint();
+	if (game_hint_point.row == -1 && game_hint_point.col == -1)
 		log("the game is dead");
+	else
+		log("game hint point: row %d, col %d", game_hint_point.row, game_hint_point.col);
 
 	// 交换动画后判断是否可以消除
 	if (_is_can_elimate == KEliminateTwoReadyFlag)
