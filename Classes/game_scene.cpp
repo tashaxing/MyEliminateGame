@@ -197,6 +197,13 @@ void GameScene::drawGameBoard()
 
 void GameScene::fillVacantElements()
 {
+	// 获得屏幕尺寸常量(必须在类函数里获取)
+	const Size kScreenSize = Director::getInstance()->getVisibleSize();
+	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
+
+	// 添加消除对象矩阵，游戏逻辑与界面解耦
+	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
+
 	// 精灵下降填补空白
 	for (int j = 0; j < kColNum; j++)
 	{
@@ -213,9 +220,30 @@ void GameScene::fillVacantElements()
 
 		// 每列下降
 		int k = 0;
+		int idx = 0;
 		while (k < kRowNum)
 		{
-			// 填补空白
+			// 从第一个空缺往后依次填补空白
+			if (_game_board[k][j].type == kElementEliminateType)
+			{
+				_game_board[k][j].type = elements[idx]->element_type;
+				_game_board[k][j].marked = false;
+
+				// 设置精灵位置和名称
+				Point new_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (k + 0.5) * element_size);
+				elements[idx]->setPosition(new_position);
+				std::string new_name = StringUtils::format("%d_%d", k, j);
+				elements[idx]->setName(new_name);
+
+				k++;
+				idx++;
+			}
+		}
+
+		while (k < kRowNum)
+		{
+			_game_board[k++][j].type = kElementEliminateType;
+			_game_board[k++][j].marked = true;
 		}
 	}
 		
@@ -440,8 +468,6 @@ void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 		element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 		element->vanish();
 	}
-		
-	// 下降精灵填充空白 type, marked
 	
 }
 
@@ -564,6 +590,9 @@ void GameScene::update(float dt)
 
 			_end_pos.row = -1;
 			_end_pos.col = -1;
+
+			// 下降精灵填补空白
+			fillVacantElements();
 		}
 		else
 		{
