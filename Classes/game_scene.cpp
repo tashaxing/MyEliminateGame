@@ -219,8 +219,10 @@ void GameScene::drawGameBoard()
 	}
 }
 
-void GameScene::fillVacantElements(float dt)
+void GameScene::dropElements(float dt)
 {
+	_is_can_touch = false;
+
 	// 获得屏幕尺寸常量(必须在类函数里获取)
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
@@ -240,6 +242,8 @@ void GameScene::fillVacantElements(float dt)
 				Element *element = (Element *)getChildByName(element_name);
 				elements.push_back(element);
 			}
+			else
+				break; // 只添加空白上方的部分精灵
 		}
 
 		// 只有中间有空缺才处理
@@ -263,24 +267,96 @@ void GameScene::fillVacantElements(float dt)
 
 		for (int idx = 0; idx < elements.size(); idx++)
 		{
-			_game_board[k++][j].type = elements[idx]->element_type;
-			_game_board[k++][j].marked = false;
+			_game_board[k][j].type = elements[idx]->element_type;
+			_game_board[k][j].marked = false;
 
 			// 设置精灵位置和名称
 			Point new_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (k + 0.5) * element_size);
-			elements[idx]->setPosition(new_position);
+			Sequence *sequence = Sequence::create(MoveTo::create(0.1, new_position), CallFunc::create([=]() {
+				elements[idx]->setPosition(new_position); // lambda回调，设置最终真实位置
+			}), NULL);
+			elements[idx]->runAction(sequence);
 			std::string new_name = StringUtils::format("%d_%d", k, j);
 			elements[idx]->setName(new_name);
+
+			k++;
 		}
 
 		while (k < kRowNum)
 		{
-			_game_board[k++][j].type = kElementEliminateType;
-			_game_board[k++][j].marked = true;
+			_game_board[k][j].type = kElementEliminateType;
+			_game_board[k][j].marked = true;
+			k++;
 		}
 		
 	}
-		
+
+	// 下降后填补顶部空白
+	fillVacantElements();
+
+	// 检验一下是否可连续消除
+	//auto eliminate_set = getEliminateSet();
+	//if (!eliminate_set.empty())
+	//{
+	//	batchEliminate(eliminate_set);
+
+	//	// 消除完毕，还原标志位
+	//	_is_can_elimate = kEliminateInitFlag;
+
+	//	// 复位移动起始位置
+	//	_start_pos.row = -1;
+	//	_start_pos.col = -1;
+
+	//	_end_pos.row = -1;
+	//	_end_pos.col = -1;
+	//}
+
+	_is_can_touch = true;
+}
+
+void GameScene::fillVacantElements()
+{
+	// 获得屏幕尺寸常量(必须在类函数里获取)
+	const Size kScreenSize = Director::getInstance()->getVisibleSize();
+	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
+
+	// 添加消除对象矩阵，游戏逻辑与界面解耦
+	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
+
+	int len = kElementImgArray.size();
+
+	srand(unsigned(time(0))); // 初始化随机数发生器
+
+	// 先获取空白精灵集合
+	for (int i = 0; i < kRowNum; i++)
+		for (int j = 0; j < kColNum; j++)
+		{
+			if (_game_board[i][j].type == kElementEliminateType)
+			{
+				int random_type = getRandomSpriteIndex(len);
+				_game_board[i][j].type = random_type;
+				_game_board[i][j].marked = false;
+
+				Element *element = Element::create();
+
+				element->element_type = _game_board[i][j].type;
+				element->setTexture(kElementImgArray[element->element_type]); // 添加随机纹理	
+				element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
+
+																		   // 添加掉落特效
+				Point init_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size + 0.5 * element_size);
+				element->setPosition(init_position);
+				Point real_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size);
+				Sequence *sequence = Sequence::create(MoveTo::create(0.3, real_position), CallFunc::create([=]() {
+					element->setPosition(real_position); // lambda回调，设置最终真实位置
+				}), NULL);
+				element->runAction(sequence);
+
+				std::string elment_name = StringUtils::format("%d_%d", i, j);
+				element->setName(elment_name); // 每个界面精灵给一个唯一的名字标号便于后续寻找
+				addChild(element, kGameBoardLevel);
+			}
+		}
 }
 
 void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
@@ -503,6 +579,8 @@ void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 		element->vanish();
 	}
 	
+	scheduleOnce(schedule_selector(GameScene::dropElements), 0.5);
+
 }
 
 
@@ -625,8 +703,8 @@ void GameScene::update(float dt)
 			_end_pos.row = -1;
 			_end_pos.col = -1;
 
-			// 下降精灵填补空白，在精灵消失动画之后短暂延时
-			scheduleOnce(schedule_selector(GameScene::fillVacantElements), 0.5);
+			//// 下降精灵填补空白，在精灵消失动画之后短暂延时
+			//scheduleOnce(schedule_selector(GameScene::dropElements), 0.5);
 		}
 		else
 		{
