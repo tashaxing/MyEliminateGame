@@ -162,6 +162,30 @@ void GameScene::drawGameBoard()
 	// 先在内存中生成，保证初始没有可消除的
 	fillGameBoard(0, 0);
 
+	// 如果生成不完美需要重新生成
+	bool is_need_regenerate = false;
+	for (int i = 0; i < kRowNum; i++)
+	{
+		for (int j = 0; j < kColNum; j++)
+		{
+			if (_game_board[i][j].type == kElementEliminateType)
+			{
+				is_need_regenerate = true;
+			}
+		}
+
+		if (is_need_regenerate)
+			break;
+	}
+
+	if (is_need_regenerate)
+	{
+		CCLOG("redraw game board");
+		drawGameBoard();
+		return;
+	}
+		
+
 	// 获得屏幕尺寸常量(必须在类函数里获取)
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
@@ -195,7 +219,7 @@ void GameScene::drawGameBoard()
 	}
 }
 
-void GameScene::fillVacantElements()
+void GameScene::fillVacantElements(float dt)
 {
 	// 获得屏幕尺寸常量(必须在类函数里获取)
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
@@ -218,6 +242,10 @@ void GameScene::fillVacantElements()
 			}
 		}
 
+		// 只有中间有空缺才处理
+		if (elements.size() == kRowNum)
+			continue;
+
 		// 每列下降
 		int k = 0;
 		int idx = 0;
@@ -235,9 +263,11 @@ void GameScene::fillVacantElements()
 				std::string new_name = StringUtils::format("%d_%d", k, j);
 				elements[idx]->setName(new_name);
 
-				k++;
-				idx++;
+				
 			}
+		
+			k++;
+			idx++;
 		}
 
 		while (k < kRowNum)
@@ -245,6 +275,7 @@ void GameScene::fillVacantElements()
 			_game_board[k++][j].type = kElementEliminateType;
 			_game_board[k++][j].marked = true;
 		}
+		
 	}
 		
 }
@@ -275,15 +306,15 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 	int type1 = element1->element_type;
 	int type2 = element2->element_type;
 
-	log(is_reverse ? "==== reverse move ====" : "==== normal move ====");
+	CCLOG(is_reverse ? "==== reverse move ====" : "==== normal move ====");
 
-	log("before move");
+	CCLOG("before move");
 
-	log("p1 name: %s", element1->getName().c_str());
-	log("p2 name: %s", element2->getName().c_str());
+	CCLOG("p1 name: %s", element1->getName().c_str());
+	CCLOG("p2 name: %s", element2->getName().c_str());
 
-	log("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
-	log("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
+	CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
+	CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 
 	// ---- 实际交换
 	// 内存中交换精灵类型
@@ -296,29 +327,29 @@ void GameScene::swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse)
 	MoveTo *move_1to2 = MoveTo::create(0.2, position2);
 	MoveTo *move_2to1 = MoveTo::create(0.2, position1);
 
-	log("after move");
+	CCLOG("after move");
 	element1->runAction(Sequence::create(move_delay, move_1to2, CallFunc::create([=]() {
 		// lambda 表达式回调，注意要用 = 捕获外部指针
 		// 重设位置，
-		log("e1 moved");
+		CCLOG("e1 moved");
 		element1->setPosition(position2);
 		// 交换名称
 		element1->setName(name2);
 
 		_is_can_elimate++;
 
-		log("p1 name: %s", element1->getName().c_str());
-		log("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
+		CCLOG("p1 name: %s", element1->getName().c_str());
+		CCLOG("position1, x: %f, y: %f", element1->getPosition().x, element1->getPosition().y);
 	}), NULL));
 	element2->runAction(Sequence::create(move_delay, move_2to1, CallFunc::create([=]() {
-		log("e2 moved");
+		CCLOG("e2 moved");
 		element2->setPosition(position1);
 		element2->setName(name1);
 
 		_is_can_elimate++;
 
-		log("p2 name: %s", element2->getName().c_str());
-		log("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
+		CCLOG("p2 name: %s", element2->getName().c_str());
+		CCLOG("position2, x: %f, y: %f", element2->getPosition().x, element2->getPosition().y);
 	}), NULL));
 
 	// 恢复触摸状态
@@ -564,14 +595,14 @@ void GameScene::update(float dt)
 		&& _end_pos.row == -1 && _end_pos.col == -1)
 		_is_can_elimate = kEliminateInitFlag;
 
-	log("eliminate flag: %d", _is_can_elimate);
+	CCLOG("eliminate flag: %d", _is_can_elimate);
 
 	// 每帧检查是否僵局
 	ElementPos game_hint_point = checkGameHint();
 	if (game_hint_point.row == -1 && game_hint_point.col == -1)
-		log("the game is dead");
+		CCLOG("the game is dead");
 	else
-		log("game hint point: row %d, col %d", game_hint_point.row, game_hint_point.col);
+		CCLOG("game hint point: row %d, col %d", game_hint_point.row, game_hint_point.col);
 
 	// 交换动画后判断是否可以消除
 	if (_is_can_elimate == KEliminateTwoReadyFlag)
@@ -591,8 +622,8 @@ void GameScene::update(float dt)
 			_end_pos.row = -1;
 			_end_pos.col = -1;
 
-			// 下降精灵填补空白
-			fillVacantElements();
+			// 下降精灵填补空白，在精灵消失动画之后短暂延时
+			scheduleOnce(schedule_selector(GameScene::fillVacantElements), 0.5);
 		}
 		else
 		{
@@ -619,13 +650,13 @@ void GameScene::update(float dt)
 
 bool GameScene::onTouchBegan(Touch *touch, Event *event)
 {
-	//log("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//CCLOG("touch begin, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 	// 只有在可触摸条件下才可以
 	if (_is_can_touch)
 	{
 		// 记录开始触摸的精灵坐标
 		_start_pos = getElementPosByCoordinate(touch->getLocation().x, touch->getLocation().y);
-		log("start pos, row: %d, col: %d", _start_pos.row, _start_pos.col);
+		CCLOG("start pos, row: %d, col: %d", _start_pos.row, _start_pos.col);
 		// 每次触碰算一次新的移动过程
 		_is_moving = true;
 	}
@@ -636,7 +667,7 @@ bool GameScene::onTouchBegan(Touch *touch, Event *event)
 
 void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 {
-	//log("touch moved, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//CCLOG("touch moved, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 
 	// 只有在可触摸条件下才可以
 	if (_is_can_touch)
@@ -660,7 +691,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 				// 根据偏移方向交换精灵
 				bool is_need_swap = false;
 
-				log("cur pos, row: %d, col: %d", _end_pos.row, _end_pos.col);
+				CCLOG("cur pos, row: %d, col: %d", _end_pos.row, _end_pos.col);
 				if (_start_pos.col + 1 == _end_pos.col && _start_pos.row == _end_pos.row) // 水平向右
 					is_need_swap = true;
 				else if (_start_pos.col - 1 == _end_pos.col && _start_pos.row == _end_pos.row) // 水平向左
@@ -686,7 +717,7 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 
 void GameScene::onTouchEnded(Touch *touch, Event *event)
 {
-	//log("touch end, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
+	//CCLOG("touch end, x: %f, y: %f", touch->getLocation().x, touch->getLocation().y);
 	_is_moving = false;
 }
 
@@ -694,11 +725,11 @@ void GameScene::onEnter()
 {
 	// 必须先layer onenter 才能捕捉触摸事件
 	Layer::onEnter();
-	log("enter game scene");
+	CCLOG("enter game scene");
 }
 
 void GameScene::onExit()
 {
 	Layer::onExit();
-	log("exit game scene");
+	CCLOG("exit game scene");
 }

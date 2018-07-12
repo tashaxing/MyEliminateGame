@@ -54,7 +54,7 @@ private:
 	
 	void fillGameBoard(int row, int col); // 在内存中随机填充游戏地图，确保没有可消除
 	void drawGameBoard(); // 绘制游戏地图界面
-	void fillVacantElements(); // 填补空缺游戏地图，不能有可消除的精灵
+	void fillVacantElements(float dt); // 填补空缺游戏地图，不能有可消除的精灵
 	void swapElementPair(ElementPos p1, ElementPos p2, bool is_reverse); // 交换两个精灵
 	bool hasEliminate(); // 检查是否有可以被消除的，不改变内存数据
 	std::vector<ElementPos> getEliminateSet(); // 获得可消除的精灵集合
