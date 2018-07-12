@@ -232,7 +232,7 @@ void GameScene::fillVacantElements(float dt)
 	for (int j = 0; j < kColNum; j++)
 	{
 		std::vector<Element *> elements;
-		for (int i = 0; i < kRowNum; i++)
+		for (int i = kRowNum - 1; i >= 0; i--)
 		{
 			if (_game_board[i][j].type != kElementEliminateType)
 			{
@@ -243,31 +243,34 @@ void GameScene::fillVacantElements(float dt)
 		}
 
 		// 只有中间有空缺才处理
-		if (elements.size() == kRowNum)
+		if (elements.size() == kRowNum || elements.empty())
 			continue;
+
+		// 先反序一下
+		std::reverse(elements.begin(), elements.end());
 
 		// 每列下降
 		int k = 0;
 		int idx = 0;
 		while (k < kRowNum)
 		{
-			// 从第一个空缺往后依次填补空白
+			// 找到第一个空白的
 			if (_game_board[k][j].type == kElementEliminateType)
-			{
-				_game_board[k][j].type = elements[idx]->element_type;
-				_game_board[k][j].marked = false;
-
-				// 设置精灵位置和名称
-				Point new_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (k + 0.5) * element_size);
-				elements[idx]->setPosition(new_position);
-				std::string new_name = StringUtils::format("%d_%d", k, j);
-				elements[idx]->setName(new_name);
-
-				
-			}
+				break;
 		
 			k++;
-			idx++;
+		}
+
+		for (int idx = 0; idx < elements.size(); idx++)
+		{
+			_game_board[k++][j].type = elements[idx]->element_type;
+			_game_board[k++][j].marked = false;
+
+			// 设置精灵位置和名称
+			Point new_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (k + 0.5) * element_size);
+			elements[idx]->setPosition(new_position);
+			std::string new_name = StringUtils::format("%d_%d", k, j);
+			elements[idx]->setName(new_name);
 		}
 
 		while (k < kRowNum)
