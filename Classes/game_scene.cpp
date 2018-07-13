@@ -19,6 +19,9 @@ const std::vector<std::string> kElementImgArray{
 	"images/candy_blue.png"
 };
 
+// 消除分数单位
+const int kScoreUnit = 10;
+
 // 消除时候类型和纹理
 const int kElementEliminateType = 10;
 const std::string kEliminateStartImg = "images/star.png";
@@ -84,6 +87,14 @@ bool GameScene::init()
 		
 	// 绘制游戏地图
 	drawGameBoard();
+
+	// 初始游戏分数
+	_score = 0;
+	Label *score_label = Label::createWithTTF(StringUtils::format("score: %d", _score), "fonts/Marker Felt.ttf", 20);
+	score_label->setTextColor(cocos2d::Color4B::YELLOW);
+	score_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height * 0.9);
+	score_label->setName("score");
+	addChild(score_label, kBackGroundLevel);
 
 	// 初始触摸坐标
 	_start_pos.row = -1;
@@ -580,6 +591,8 @@ void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 		element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 		element->vanish();
 	}
+
+	addScore(kScoreUnit * eliminate_list.size());
 	
 	scheduleOnce(schedule_selector(GameScene::dropElements), 0.5);
 
@@ -671,12 +684,16 @@ ElementPos GameScene::checkGameHint()
 	return game_hint_point;
 }
 
-void GameScene::updateScore()
+void GameScene::addScore(int delta_score)
 {
-
+	// 获得记分牌，更新分数
+	_score += delta_score;
+	
+	Label *score_label = (Label *)getChildByName("score");
+	score_label->setString(StringUtils::format("score: %d", _score));
 }
 
-void GameScene::updateProgress()
+void GameScene::modifyProgress()
 {
 
 }

@@ -51,6 +51,7 @@ private:
 	bool _is_can_touch; // 是否可触摸
 	int _is_can_elimate; // 是否可以消除状态（动画效果）
 	ElementPos getElementPosByCoordinate(float x, float y);
+	int _score; // 游戏分数
 	
 	void fillGameBoard(int row, int col); // 在内存中随机填充游戏地图，确保没有可消除
 	void drawGameBoard(); // 绘制游戏地图界面
@@ -63,8 +64,8 @@ private:
 	void delayBatchEliminate(float dt); // 延迟执行消除
 	ElementPos checkGameHint(); // 获取游戏的提示点，如果为默认的则游戏陷入僵局
 
-	void updateScore(); // 更新分数
-	void updateProgress(); // 更新进度条
+	void addScore(int delta_score); // 添加分数
+	void modifyProgress(); // 更新进度条
 };
 
 #endif // __HELLOWORLD_SCENE_H__
