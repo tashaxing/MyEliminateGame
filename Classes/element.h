@@ -10,6 +10,9 @@ public:
 
 	int element_type; // 纹理类型
 
+	void appear(); // 播放出现效果动画
+	void appearSchedule(float dt); // 延时显示
+
 	void vanish(); // 播放消失效果动画
 	void vanishCallback(); // 消失回调
 

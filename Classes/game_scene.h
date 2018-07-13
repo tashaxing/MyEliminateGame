@@ -60,7 +60,11 @@ private:
 	bool hasEliminate(); // 检查是否有可以被消除的，不改变内存数据
 	std::vector<ElementPos> getEliminateSet(); // 获得可消除的精灵集合
 	void batchEliminate(const std::vector<ElementPos> &eliminate_list); // 执行消除
+	void delayBatchEliminate(float dt); // 延迟执行消除
 	ElementPos checkGameHint(); // 获取游戏的提示点，如果为默认的则游戏陷入僵局
+
+	void updateScore(); // 更新分数
+	void updateProgress(); // 更新进度条
 };
 
 #endif // __HELLOWORLD_SCENE_H__

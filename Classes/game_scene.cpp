@@ -178,6 +178,7 @@ void GameScene::drawGameBoard()
 			break;
 	}
 
+	// FIXME: sometime will crash
 	if (is_need_regenerate)
 	{
 		CCLOG("redraw game board");
@@ -226,8 +227,6 @@ void GameScene::dropElements(float dt)
 	// 获得屏幕尺寸常量(必须在类函数里获取)
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
-
-	// 添加消除对象矩阵，游戏逻辑与界面解耦
 	float element_size = (kScreenSize.width - kLeftMargin - kRightMargin) / kColNum;
 
 	// 精灵下降填补空白
@@ -294,24 +293,30 @@ void GameScene::dropElements(float dt)
 	// 下降后填补顶部空白
 	fillVacantElements();
 
-	// 检验一下是否可连续消除
-	//auto eliminate_set = getEliminateSet();
-	//if (!eliminate_set.empty())
-	//{
-	//	batchEliminate(eliminate_set);
-
-	//	// 消除完毕，还原标志位
-	//	_is_can_elimate = kEliminateInitFlag;
-
-	//	// 复位移动起始位置
-	//	_start_pos.row = -1;
-	//	_start_pos.col = -1;
-
-	//	_end_pos.row = -1;
-	//	_end_pos.col = -1;
-	//}
+	// 等空白精灵被填满后延迟消除
+	scheduleOnce(schedule_selector(GameScene::delayBatchEliminate), 0.9);
 
 	_is_can_touch = true;
+}
+
+void GameScene::delayBatchEliminate(float dt)
+{
+	// 检验是否可连续消除
+	auto eliminate_set = getEliminateSet();
+	if (!eliminate_set.empty())
+	{
+		batchEliminate(eliminate_set);
+
+		// 消除完毕，还原标志位
+		_is_can_elimate = kEliminateInitFlag;
+
+		// 复位移动起始位置
+		_start_pos.row = -1;
+		_start_pos.col = -1;
+
+		_end_pos.row = -1;
+		_end_pos.col = -1;
+	}
 }
 
 void GameScene::fillVacantElements()
@@ -343,14 +348,11 @@ void GameScene::fillVacantElements()
 				element->setTexture(kElementImgArray[element->element_type]); // 添加随机纹理	
 				element->setContentSize(Size(element_size, element_size)); // 在内部设置尺寸
 
-																		   // 添加掉落特效
-				Point init_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size + 0.5 * element_size);
-				element->setPosition(init_position);
 				Point real_position(kLeftMargin + (j + 0.5) * element_size, kBottonMargin + (i + 0.5) * element_size);
-				Sequence *sequence = Sequence::create(MoveTo::create(0.3, real_position), CallFunc::create([=]() {
-					element->setPosition(real_position); // lambda回调，设置最终真实位置
-				}), NULL);
-				element->runAction(sequence);
+				element->setPosition(real_position); // lambda回调，设置最终真实位置
+				
+				// 添加出现特效
+				element->appear();
 
 				std::string elment_name = StringUtils::format("%d_%d", i, j);
 				element->setName(elment_name); // 每个界面精灵给一个唯一的名字标号便于后续寻找
@@ -669,6 +671,16 @@ ElementPos GameScene::checkGameHint()
 	return game_hint_point;
 }
 
+void GameScene::updateScore()
+{
+
+}
+
+void GameScene::updateProgress()
+{
+
+}
+
 void GameScene::update(float dt)
 {
 	// 需要确保标记清除
@@ -759,13 +771,13 @@ void GameScene::onTouchMoved(cocos2d::Touch *touch, cocos2d::Event *event)
 		if (_start_pos.row > -1 && _start_pos.row < kRowNum
 			&& _start_pos.col > -1 && _start_pos.col < kColNum)
 		{
-			// 只在水平和数值两个维度进行位移, 并且移动之后固定一个方向
-			//float x_delta = touch->getDelta().x;
-			//float y_delta = touch->getDelta().y;
-
 			// 通过判断移动后触摸点的位置在哪个范围来决定移动的方向
 			Vec2 cur_loacation = touch->getLocation();
-			_end_pos = getElementPosByCoordinate(cur_loacation.x, cur_loacation.y);
+			
+			// 触摸点只获取一次，防止跨精灵互换
+			if (_end_pos.row == -1 && _end_pos.col == -1
+				|| _end_pos.row == _start_pos.row && _end_pos.col == _start_pos.col)
+				_end_pos = getElementPosByCoordinate(cur_loacation.x, cur_loacation.y);
 
 			if (_is_moving)
 			{
