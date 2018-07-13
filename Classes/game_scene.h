@@ -34,7 +34,7 @@ public:
 	virtual void onEnter();
 	virtual void onExit();
 
-	void update(float dt);
+	virtual void update(float dt);
 
 	// 触摸检测
 	virtual bool onTouchBegan(cocos2d::Touch *touch, cocos2d::Event *event);
@@ -52,6 +52,7 @@ private:
 	int _is_can_elimate; // 是否可以消除状态（动画效果）
 	ElementPos getElementPosByCoordinate(float x, float y);
 	int _score; // 游戏分数
+	int _animation_score; // 计分动画的中间分数
 	
 	void fillGameBoard(int row, int col); // 在内存中随机填充游戏地图，确保没有可消除
 	void drawGameBoard(); // 绘制游戏地图界面
@@ -65,6 +66,7 @@ private:
 	ElementPos checkGameHint(); // 获取游戏的提示点，如果为默认的则游戏陷入僵局
 
 	void addScore(int delta_score); // 添加分数
+	void addScoreCallback(float dt); // 分数改变的定时器回调
 	void modifyProgress(); // 更新进度条
 };
 

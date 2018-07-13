@@ -90,6 +90,8 @@ bool GameScene::init()
 
 	// 初始游戏分数
 	_score = 0;
+	_animation_score = 0;
+
 	Label *score_label = Label::createWithTTF(StringUtils::format("score: %d", _score), "fonts/Marker Felt.ttf", 20);
 	score_label->setTextColor(cocos2d::Color4B::YELLOW);
 	score_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height * 0.9);
@@ -684,13 +686,24 @@ ElementPos GameScene::checkGameHint()
 	return game_hint_point;
 }
 
+void GameScene::addScoreCallback(float dt)
+{
+	Label *score_label = (Label *)getChildByName("score");
+	_animation_score++;
+	score_label->setString(StringUtils::format("score: %d", _animation_score));
+
+	// 加分到位了，停止计时器
+	if (_animation_score == _score)
+		unschedule(schedule_selector(GameScene::addScoreCallback));
+}
+
 void GameScene::addScore(int delta_score)
 {
 	// 获得记分牌，更新分数
 	_score += delta_score;
 	
-	Label *score_label = (Label *)getChildByName("score");
-	score_label->setString(StringUtils::format("score: %d", _score));
+	// 进入计分加分动画
+	schedule(schedule_selector(GameScene::addScoreCallback), 0.03);
 }
 
 void GameScene::modifyProgress()
