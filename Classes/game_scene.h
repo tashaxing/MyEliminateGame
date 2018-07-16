@@ -53,6 +53,7 @@ private:
 	ElementPos getElementPosByCoordinate(float x, float y);
 	int _score; // 游戏分数
 	int _animation_score; // 计分动画的中间分数
+	cocos2d::ProgressTimer *_progress_timer; // 进度条
 	
 	void fillGameBoard(int row, int col); // 在内存中随机填充游戏地图，确保没有可消除
 	void drawGameBoard(); // 绘制游戏地图界面
@@ -67,7 +68,7 @@ private:
 
 	void addScore(int delta_score); // 添加分数
 	void addScoreCallback(float dt); // 分数改变的定时器回调
-	void modifyProgress(); // 更新进度条
+	void tickProgress(float dt); // 更新进度条
 };
 
 #endif // __HELLOWORLD_SCENE_H__

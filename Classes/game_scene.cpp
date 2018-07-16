@@ -110,6 +110,17 @@ bool GameScene::init()
 	_is_can_touch = true;
 	_is_can_elimate = 0; // 0, 1, 2三个等级，0为初始，1表示一个精灵ready，2表示两个精灵ready，可以消除
 
+	// 进度条
+	_progress_timer = ProgressTimer::create(Sprite::create("images/progress_bar.png"));//创建一个进程条
+	_progress_timer->setBarChangeRate(Point(1, 0));
+	_progress_timer->setType(ProgressTimer::Type::BAR);
+	_progress_timer->setMidpoint(Point(0, 1));
+	_progress_timer->setPosition(Point(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height * 0.8));
+	_progress_timer->setPercentage(100.0); // 初始为满
+	addChild(_progress_timer, kBackGroundLevel);
+	schedule(schedule_selector(GameScene::tickProgress), 1.0);
+	
+
 	// 添加触摸事件监听
 	EventListenerTouchOneByOne *touch_listener = EventListenerTouchOneByOne::create();
 	touch_listener->onTouchBegan = CC_CALLBACK_2(GameScene::onTouchBegan, this);
@@ -699,16 +710,23 @@ void GameScene::addScoreCallback(float dt)
 
 void GameScene::addScore(int delta_score)
 {
-	// 获得记分牌，更新分数
+	// 获得记分牌，更新分数和进度条
 	_score += delta_score;
+	_progress_timer->setPercentage(_progress_timer->getPercentage() + 3.0);
+	if (_progress_timer->getPercentage() > 100.0)
+		_progress_timer->setPercentage(100.0);
 	
 	// 进入计分加分动画
 	schedule(schedule_selector(GameScene::addScoreCallback), 0.03);
 }
 
-void GameScene::modifyProgress()
+void GameScene::tickProgress(float dt)
 {
-
+	// 根据时间衰减进度条到0
+	if (_progress_timer->getPercentage() > 0.0)
+		_progress_timer->setPercentage(_progress_timer->getPercentage() - 1.0);
+	else
+		schedule_selector(GameScene::tickProgress);
 }
 
 void GameScene::update(float dt)
@@ -744,9 +762,6 @@ void GameScene::update(float dt)
 
 			_end_pos.row = -1;
 			_end_pos.col = -1;
-
-			//// 下降精灵填补空白，在精灵消失动画之后短暂延时
-			//scheduleOnce(schedule_selector(GameScene::dropElements), 0.5);
 		}
 		else
 		{
