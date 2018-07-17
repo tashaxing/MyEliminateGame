@@ -3,6 +3,7 @@
 #include "element.h"
 
 USING_NS_CC;
+using namespace CocosDenshion;
 
 // 场景中的层次，数字大的在上层
 const int kBackGroundLevel = 0; // 背景层
@@ -26,6 +27,12 @@ const std::vector<std::string> kComboTextArray{
 	"Great",
 	"Unbelievable"
 };
+
+// 声音文件
+const std::string kBackgourndMusic = "sounds/background.mp3";
+const std::string kWelcomeEffect = "sounds/welcome.mp3";
+const std::string kPopEffect = "sounds/pop.mp3";
+const std::string kUnbelievableEffect = "sounds/unbelievable.mp3";
 
 // 消除分数单位
 const int kScoreUnit = 10;
@@ -127,6 +134,10 @@ bool GameScene::init()
 	_progress_timer->setPercentage(100.0); // 初始为满
 	addChild(_progress_timer, kBackGroundLevel);
 	schedule(schedule_selector(GameScene::tickProgress), 1.0);
+
+	// 播放音效
+	SimpleAudioEngine::getInstance()->playBackgroundMusic(kBackgourndMusic.c_str(), true);
+	SimpleAudioEngine::getInstance()->playEffect(kWelcomeEffect.c_str());
 
 	// 添加combo标语label
 	_combo_label = Label::createWithTTF(StringUtils::format("Ready Go"), "fonts/Marker Felt.ttf", 40);
@@ -607,6 +618,9 @@ std::vector<ElementPos> GameScene::getEliminateSet()
 
 void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 {
+	// 播放消除音效
+	SimpleAudioEngine::getInstance()->playEffect(kPopEffect.c_str());
+
 	// 切换精灵图标并消失
 	const Size kScreenSize = Director::getInstance()->getVisibleSize();
 	const Vec2 kScreenOrigin = Director::getInstance()->getVisibleOrigin();
@@ -622,9 +636,14 @@ void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 		element->vanish();
 	}
 
+	
+
 	// combo标语
 	std::string combo_text;
 	int len = eliminate_list.size();
+	if (len >= 4)
+		SimpleAudioEngine::getInstance()->playEffect(kUnbelievableEffect.c_str());
+
 	if (len == 4)
 		combo_text = kComboTextArray[0];
 	else if (len > 4 && len <= 6)
