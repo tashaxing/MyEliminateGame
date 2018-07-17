@@ -7,6 +7,7 @@ USING_NS_CC;
 // 场景中的层次，数字大的在上层
 const int kBackGroundLevel = 0; // 背景层
 const int kGameBoardLevel = 1;  // 实际的游戏精灵层
+const int kFlashLevel = 3; // 显示combo的弹层
 const int kMenuLevel = 5; // 菜单层
 
 // 精灵纹理文件，索引值就是类型
@@ -17,6 +18,13 @@ const std::vector<std::string> kElementImgArray{
 	"images/candy_red.png",
 	"images/candy_green.png",
 	"images/candy_blue.png"
+};
+
+// combo标语
+const std::vector<std::string> kComboTextArray{
+	"Good",
+	"Great",
+	"Unbelievable"
 };
 
 // 消除分数单位
@@ -31,7 +39,7 @@ const float kLeftMargin = 20;
 const float kRightMargin = 20;
 const float kBottonMargin = 70;
 
-// 精灵使数量
+// 精灵矩阵行列数
 const int kRowNum = 8;
 const int kColNum = 8;
 
@@ -92,11 +100,11 @@ bool GameScene::init()
 	_score = 0;
 	_animation_score = 0;
 
-	Label *score_label = Label::createWithTTF(StringUtils::format("score: %d", _score), "fonts/Marker Felt.ttf", 20);
-	score_label->setTextColor(cocos2d::Color4B::YELLOW);
-	score_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height * 0.9);
-	score_label->setName("score");
-	addChild(score_label, kBackGroundLevel);
+	_score_label = Label::createWithTTF(StringUtils::format("score: %d", _score), "fonts/Marker Felt.ttf", 20);
+	_score_label->setTextColor(cocos2d::Color4B::YELLOW);
+	_score_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height * 0.9);
+	_score_label->setName("score");
+	addChild(_score_label, kBackGroundLevel);
 
 	// 初始触摸坐标
 	_start_pos.row = -1;
@@ -119,7 +127,16 @@ bool GameScene::init()
 	_progress_timer->setPercentage(100.0); // 初始为满
 	addChild(_progress_timer, kBackGroundLevel);
 	schedule(schedule_selector(GameScene::tickProgress), 1.0);
-	
+
+	// 添加combo标语label
+	_combo_label = Label::createWithTTF(StringUtils::format("Ready Go"), "fonts/Marker Felt.ttf", 40);
+	_combo_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
+	addChild(_combo_label, kFlashLevel);
+	_combo_label->runAction(Sequence::create(DelayTime::create(0.8), MoveBy::create(0.3, Vec2(200, 0)), CallFunc::create([=]() {
+		// 初始动画后隐藏，并重置位置
+		_combo_label->setVisible(false);
+		_combo_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
+	}), NULL));
 
 	// 添加触摸事件监听
 	EventListenerTouchOneByOne *touch_listener = EventListenerTouchOneByOne::create();
@@ -605,8 +622,27 @@ void GameScene::batchEliminate(const std::vector<ElementPos> &eliminate_list)
 		element->vanish();
 	}
 
+	// combo标语
+	std::string combo_text;
+	int len = eliminate_list.size();
+	if (len == 4)
+		combo_text = kComboTextArray[0];
+	else if (len > 4 && len <= 6)
+		combo_text = kComboTextArray[1];
+	else if (len > 6)
+		combo_text = kComboTextArray[2];
+	_combo_label->setString(combo_text);
+	_combo_label->setVisible(true);
+	_combo_label->runAction(Sequence::create(MoveBy::create(0.5, Vec2(0, -50)), CallFunc::create([=]() {
+		// 初始动画后隐藏并重置位置
+		_combo_label->setVisible(false);
+		_combo_label->setPosition(kScreenOrigin.x + kScreenSize.width / 2, kScreenOrigin.y + kScreenSize.height / 2);
+	}), NULL));
+
+	// 修改分数
 	addScore(kScoreUnit * eliminate_list.size());
 	
+	// 下降精灵
 	scheduleOnce(schedule_selector(GameScene::dropElements), 0.5);
 
 }
@@ -699,9 +735,8 @@ ElementPos GameScene::checkGameHint()
 
 void GameScene::addScoreCallback(float dt)
 {
-	Label *score_label = (Label *)getChildByName("score");
 	_animation_score++;
-	score_label->setString(StringUtils::format("score: %d", _animation_score));
+	_score_label->setString(StringUtils::format("score: %d", _animation_score));
 
 	// 加分到位了，停止计时器
 	if (_animation_score == _score)
@@ -726,7 +761,12 @@ void GameScene::tickProgress(float dt)
 	if (_progress_timer->getPercentage() > 0.0)
 		_progress_timer->setPercentage(_progress_timer->getPercentage() - 1.0);
 	else
-		schedule_selector(GameScene::tickProgress);
+	{
+		_combo_label->setString("game over");
+		_combo_label->setVisible(true);
+		unschedule(schedule_selector(GameScene::tickProgress));
+	}
+		
 }
 
 void GameScene::update(float dt)
@@ -738,10 +778,16 @@ void GameScene::update(float dt)
 
 	CCLOG("eliminate flag: %d", _is_can_elimate);
 
-	// 每帧检查是否僵局
+	// 每帧检查是否僵局,如果不是死局则显示当前提示点
 	ElementPos game_hint_point = checkGameHint();
 	if (game_hint_point.row == -1 && game_hint_point.col == -1)
+	{
 		CCLOG("the game is dead");
+
+		_combo_label->setString("dead game");
+		_combo_label->setVisible(true);
+		unschedule(schedule_selector(GameScene::tickProgress));
+	}
 	else
 		CCLOG("game hint point: row %d, col %d", game_hint_point.row, game_hint_point.col);
 

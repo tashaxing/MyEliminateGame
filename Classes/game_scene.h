@@ -52,8 +52,10 @@ private:
 	int _is_can_elimate; // 是否可以消除状态（动画效果）
 	ElementPos getElementPosByCoordinate(float x, float y);
 	int _score; // 游戏分数
+	cocos2d::Label *_score_label; // 分数文字
 	int _animation_score; // 计分动画的中间分数
 	cocos2d::ProgressTimer *_progress_timer; // 进度条
+	cocos2d::Label *_combo_label; // 显示combo的标语
 	
 	void fillGameBoard(int row, int col); // 在内存中随机填充游戏地图，确保没有可消除
 	void drawGameBoard(); // 绘制游戏地图界面
