@@ -5,15 +5,15 @@ elminate game written in cocos2dx
 
 ![](./pic/screenshot.gif)<br/>
 
-![](./pic/welcome.PNG)<br/>
+![](./pic/welcome.PNG)
 
 ![](./pic/readygo.PNG)<br/>
 
-![](./pic/eliminate.PNG)<br/>
+![](./pic/eliminate.PNG)
 
 ![](./pic/great.PNG)<br/>
 
-![](./pic/deadgame.PNG)<br/>
+![](./pic/deadgame.PNG)
 
 ![](./pic/gameover.PNG)<br/>
 
